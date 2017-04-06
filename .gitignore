@@ -1,0 +1,5 @@
+.metadata/
+.recommenders/
+MJCompiler/logs/
+MJCompiler/.settings/org.eclipse.jdt.core.prefs
+*.class

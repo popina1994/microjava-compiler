@@ -1,5 +1,5 @@
 package rs.ac.bg.etf.pp1;
- 
+
 import java_cup.runtime.Symbol;
 
 %%
@@ -8,11 +8,11 @@ import java_cup.runtime.Symbol;
     private Symbol new_symbol(int type) {
         return new Symbol(type, yyline+1, yycolumn);
     }
-    
+
     private Symbol new_symbol(int type, Object value) {
         return new Symbol(type, yyline+1, yycolumn, value);
     }
-     
+
 %}
 
 %cup
@@ -25,7 +25,7 @@ import java_cup.runtime.Symbol;
     return new_symbol(sym.EOF);
 %eofval}
 
-%% 
+%%
 
 " "    {}
 "\b"   {}

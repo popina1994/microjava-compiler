@@ -1411,7 +1411,7 @@ AssingmentStatementOrErrorSemi ::=
             }
             else
             {
-                RESULT = dest.setIsSemanticError(true);
+                RSEULT = dest.setIsSemanticError(true);
             }
         :}
         ;

@@ -10,5 +10,6 @@
 	<classpathentry kind="lib" path="lib/mj-runtime.jar"/>
 	<classpathentry kind="lib" path="lib/log4j.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/commons-cli-1.4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

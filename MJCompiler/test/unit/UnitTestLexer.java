@@ -10,7 +10,7 @@ import java.util.List;
 // MJLexerTest1.mj
 
 public class UnitTestLexer extends UnitTest {
-	public UnitTestLexer(String testName) {
+	public UnitTestLexer() {
 		super(TEST_NAME);
 		// TODO Auto-generated constructor stub
 	}

@@ -20,10 +20,7 @@ public abstract class UnitTest {
 	protected static final String PATH_LIB = PATH_ECLIPSE_ROOT + "/lib";
 	protected static final String PATH_SRC = PATH_ECLIPSE_ROOT + "/src/rs/ac/bg/etf/pp1";
 	
-	private static int ARG_IDX_UNIT_TEST_TYPE = 0;
-	private static int ARG_IDX_UNIT_TEST_NUMBER = 1;
-	private static int ARG_IDX_BUILD_INCLUDED = 2;
-	private static int ARG_IDX_PREVIOUS_BUILDS_INCLUDED = 3;
+
 	
 	private String name;
 	

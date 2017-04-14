@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.LinkedList;
 import java.util.List;
 
 public abstract class UnitTest {
@@ -13,14 +14,17 @@ public abstract class UnitTest {
 	protected static final String CMD_JAVA_RUN_MAIN = "-jar";
 	protected static final String CMD_JAVA_RUN_NOT_MAIN = "-cp";
 	
-	protected static final String PATH_ECLIPSE_ROOT  = System.getProperty("user.dir");
+	protected static final String PATH_ECLIPSE_ROOT  = "C:/pp1 domaci/workspace/MJCompiler";
+	protected static final String PATH_PROJECT_PACKAGE= "rs/ac/bg/etf/pp1";
 	
 	protected static final String PATH_TEST = PATH_ECLIPSE_ROOT + "/test";
 	protected static final String PATH_SPEC = PATH_ECLIPSE_ROOT + "/spec";
 	protected static final String PATH_LIB = PATH_ECLIPSE_ROOT + "/lib";
-	protected static final String PATH_SRC = PATH_ECLIPSE_ROOT + "/src/rs/ac/bg/etf/pp1";
+	protected static final String PATH_BIN = PATH_ECLIPSE_ROOT + "/bin";
+	protected static final String CLASS_PATH = PATH_BIN + ";" + PATH_LIB + "/*";
+	protected static final String PATH_SRC = PATH_ECLIPSE_ROOT + "/src/" + PATH_PROJECT_PACKAGE;
 	
-
+	
 	
 	private String name;
 	
@@ -35,7 +39,9 @@ public abstract class UnitTest {
 	
 	public void executeTest(int unitTestNum)
 	{
-		ProcessBuilder processBuilder = new ProcessBuilder(argumentsListUnitTestRun(unitTestNum));
+		LinkedList<String> listArgs = null;
+		listArgs = argumentsListUnitTestRun(unitTestNum);
+		ProcessBuilder processBuilder = new ProcessBuilder(listArgs);
 		Process process;
 		try {
 			processBuilder.redirectErrorStream(true);
@@ -62,7 +68,10 @@ public abstract class UnitTest {
 	
 	public void buildCode()
 	{
-		ProcessBuilder processBuilder = new ProcessBuilder(argumentsListUnitTestBuild());
+		LinkedList<String> listArg = null;
+		listArg = argumentsListUnitTestBuild();
+		
+		ProcessBuilder processBuilder = new ProcessBuilder(listArg);
 		Process process;
 		try {
 			processBuilder.redirectErrorStream(true);
@@ -112,7 +121,7 @@ public abstract class UnitTest {
 		
 	}
 	
-	protected abstract List<String> argumentsListUnitTestRun(int unitTestNum);
-	protected abstract List<String> argumentsListUnitTestBuild();
+	protected abstract LinkedList<String> argumentsListUnitTestRun(int unitTestNum);
+	protected abstract LinkedList<String> argumentsListUnitTestBuild();
 	
 }

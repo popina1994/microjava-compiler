@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.LinkedList;
-import java.util.List;
 
 // MJLexerTest1.mj
 
@@ -22,16 +21,17 @@ public class UnitTestLexer extends UnitTest {
 	private static final String PATH_TEST_LEXER_RUN = PATH_TEST + "/lexer";
 	private static final String PATH_MICRO_JAVA_FLEX = PATH_SPEC + "/mjlexer.flex";
 	
+	private static final String PATH_TEST_UNIT_PROGRAM = PATH_PROJECT_PACKAGE + "/MJLexerTest";
+	
 	private static String [] TEST_MICRO_JAVA_LEXER  = new String[]{	
 		"MJLexerTest1.mj"
 	};
 	
-	private static final String[] TEST_MICRO_JAVA_CUP = new String[]{};
 	private static void addPath(String path, String[] tests)
 	{
 		for (int idx = 0; idx < tests.length; idx ++)
 		{
-			tests[idx] = path + tests[idx];
+			tests[idx] = path + "/" + tests[idx];
 		}
 	}
 	
@@ -48,27 +48,34 @@ public class UnitTestLexer extends UnitTest {
 			System.out.println(s);
 		}
 	}
-	
-	public static void main(String[] args)
-	{
 
+	@Override
+	protected LinkedList<String> argumentsListUnitTestRun(int unitTest) {
 		
 		
-		
+		LinkedList<String> listArgs = new LinkedList<>();
+		listArgs.addLast(PATH_JAVA_EXE);
+		listArgs.addLast(CMD_JAVA_RUN_NOT_MAIN);
+		listArgs.addLast(CLASS_PATH);
+		listArgs.addLast(PATH_TEST_UNIT_PROGRAM);
+		listArgs.addLast(TEST_MICRO_JAVA_LEXER[unitTest]);
+		return listArgs;
 	}
 
 	@Override
-	protected List<String> argumentsListUnitTestRun(int unitTest) {
-		return null;
-	}
-
-	@Override
-	protected List<String> argumentsListUnitTestBuild() {
-		LinkedList listArgs = new LinkedList();
+	protected LinkedList<String> argumentsListUnitTestBuild() {
+		LinkedList<String> listArgs = new LinkedList<>();
+		// Java run
+		//
+		listArgs.addLast(PATH_JAVA_EXE);
 		listArgs.addLast(CMD_JAVA_RUN_MAIN);
 		listArgs.addLast(PATH_JFLEX_JAR);
+		// Where to store built java files.
+		//
 		listArgs.addLast(CMD_JFLEX_OUTPUT_DIRECTORY);
 		listArgs.addLast(PATH_SRC);
+		// JFLEX specification file of MJ compiler.
+		//
 		listArgs.addLast(PATH_MICRO_JAVA_FLEX);
 		return listArgs;
 	}

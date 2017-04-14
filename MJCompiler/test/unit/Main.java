@@ -18,29 +18,33 @@ public class Main {
 	private static final String NAME_TEST_GENERATOR_SHORT = "gen";
 	private static final String NAME_TEST_GENERATOR_LONG = "generator";
 	
-	private static final String TEXT_TEST_STARTED = "*************Test zapocet*********\n";
-	private static final String TEXT_TEST_FINISHED = "*************Test zavrsen*********\n";
+	private static final String TEXT_TEST_STARTED = "**********************************Test zapocet******************************\n";
+	private static final String TEXT_TEST_FINISHED = "**********************************Test zavrsen*******************************\n";
 	
 	private static final String CMD_TYPE_SHORT = "t";
 	private static final String CMD_TYPE_LONG = "type";
-	private static final String CMD_TYPE_DESCRIPTION = "type of unit test which is run";
+	private static final String CMD_TYPE_DESCRIPTION = "tip testa koji se pokrece\n"
+			+ "1) lex, lekser za lekser\n"
+			+ "2) sin, sintaksa za sintaksu\n"
+			+ "3) sem, semantika za semantiku\n"
+			+ "4) gen, generator za generator\n";
 	
 	private static final String CMD_BUILD_SHORT = "b";
 	private static final String CMD_BUILD_LONG = "build";
-	private static final String CMD_BUILD_DESCRIPTION = "should we rebuild source code";
+	private static final String CMD_BUILD_DESCRIPTION = "da li se kod ponovo build-uje";
 	
 	private static final String CMD_RUN_PREVIOUS_TESTS_SHORT = "rp";
 	private static final String CMD_RUN_PREVIOUS_TESTS_LONG = "runPrevious";
-	private static final String CMD_RUN_PREVIOUS_TESTS_DESCRIPTION = "are previous tests included";
+	private static final String CMD_RUN_PREVIOUS_TESTS_DESCRIPTION = "da li su prethodni testovi ukljuceni";
 	
 	private static final String CMD_RUN_TEST_NUMBER_SHORT = "n";
 	private static final String CMD_RUN_TEST_NUMBER_LONG = "number";
-	private static final String CMD_RUN_TEST_NUMBER_DESCRIPTION = "number of unit test which is run";
+	private static final String CMD_RUN_TEST_NUMBER_DESCRIPTION = "broj unit test-a koji se bira";
 	
 	
 	// TODO : pass test number parametar, return value and print error in case of unit test.
 	//
-	public static void testRun(String testType, Boolean buildIncluded, Boolean previousTestsRun)
+	public static void testRun(String testType, Boolean buildIncluded, Boolean previousTestsRun, Integer testNum)
 	{
 		if (previousTestsRun)
 		{
@@ -51,15 +55,15 @@ public class Main {
 				// 
 				case NAME_TEST_PARSER_SYNTAX_SHORT:
 				case NAME_TEST_PARSER_SYNTAX_LONG:
-					testRun(NAME_TEST_LEXER_SHORT, buildIncluded, previousTestsRun);
+					testRun(NAME_TEST_LEXER_SHORT, buildIncluded, previousTestsRun, testNum);
 					break;
 				case NAME_TEST_PARSER_SEMANTIC_SHORT:
 				case NAME_TEST_PARSER_SEMANTIC_LONG:
-					testRun(NAME_TEST_PARSER_SYNTAX_LONG, buildIncluded, previousTestsRun);
+					testRun(NAME_TEST_PARSER_SYNTAX_LONG, buildIncluded, previousTestsRun, testNum);
 					break;
 				case NAME_TEST_GENERATOR_SHORT:
 				case NAME_TEST_GENERATOR_LONG:
-					testRun(NAME_TEST_PARSER_SYNTAX_LONG, buildIncluded, previousTestsRun);
+					testRun(NAME_TEST_PARSER_SYNTAX_LONG, buildIncluded, previousTestsRun, testNum);
 					break;
 					
 			}
@@ -82,7 +86,7 @@ public class Main {
 		{
 			unitTest.buildCode();
 		}
-		//unitTest.executeTest(-1);
+		unitTest.executeTest(testNum);
 		System.out.println(TEXT_TEST_FINISHED);
 		
 	}
@@ -95,9 +99,9 @@ public class Main {
 		// TODO : Change from number to String.
 		//
 		Option optionTestNumber = new Option(CMD_RUN_TEST_NUMBER_SHORT, 
-											 CMD_RUN_PREVIOUS_TESTS_LONG, 
+											 CMD_RUN_TEST_NUMBER_LONG, 
 											 true, 
-											 CMD_RUN_PREVIOUS_TESTS_DESCRIPTION);
+											 CMD_RUN_TEST_NUMBER_DESCRIPTION);
 		optionTestNumber.setRequired(false);
 		Option optionBuildIncluded = new Option(CMD_BUILD_SHORT, CMD_BUILD_LONG, true, CMD_BUILD_DESCRIPTION);
 		optionBuildIncluded.setRequired(false); 
@@ -126,13 +130,19 @@ public class Main {
 		}
 		
 		String type = cmd.getOptionValue(CMD_TYPE_LONG);
-		System.out.println(type);
+		System.out.println("Tip " + type);
+		 
 		
 		Boolean buildIncluded = Boolean.parseBoolean(cmd.getOptionValue(CMD_BUILD_SHORT));
 		Boolean previousTestsIncluded = Boolean.parseBoolean(cmd.getOptionValue(CMD_RUN_PREVIOUS_TESTS_SHORT));
+		Integer testNum = Integer.parseInt(cmd.getOptionValue(CMD_RUN_TEST_NUMBER_LONG));
+		
+		System.out.println("Build ukljucen " + buildIncluded);
+		System.out.println("Prethodni ukljuceni " + previousTestsIncluded);
+		System.out.println("Broj testa " + testNum);
 		
 		
-		testRun(type, buildIncluded, previousTestsIncluded);
+		testRun(type, buildIncluded, previousTestsIncluded, testNum);
 	}
 
 }

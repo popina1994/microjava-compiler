@@ -1,0 +1,41 @@
+package unit;
+
+public class UnitTestFactory {
+	
+	static final int UNIT_TEST_LEX = 0;
+	static final int UNIT_TEST_SEM = 1;
+	static final int UNIT_TEST_SYN = 2;
+	static final int UNIT_TEST_GEN = 3;
+	
+	static final String TEST_UNIT_LEXER_NAME = "LEXER";
+	static final String TEST_UNIT_SYNTAX_NAME = "SYNTAX";
+	
+	UnitTest createUnitTest(int testType)
+	{
+		UnitTest unitTest = null;
+		switch (testType)
+		{
+			case UNIT_TEST_LEX:
+				unitTest = new UnitTestLexer(TEST_UNIT_LEXER_NAME);
+				break;
+			case UNIT_TEST_SYN:
+				unitTest = new UnitTestSyntax(TEST_UNIT_SYNTAX_NAME);
+				break;
+		}
+		return unitTest;
+	}
+	
+	int numberOfTests(int testType)
+	{
+		switch (testType)
+		{
+			case UNIT_TEST_LEX:
+				return UnitTestLexer.TEST_MICRO_JAVA_LEXER.length;
+			case UNIT_TEST_SYN:
+				return UnitTestSyntax.TEST_MICRO_JAVA_PARSER_SYNTAX.length;
+			
+		}
+		return 0;
+	}
+	
+}

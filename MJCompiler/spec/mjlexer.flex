@@ -1,10 +1,16 @@
 package rs.ac.bg.etf.pp1;
 
 import java_cup.runtime.Symbol;
+import org.apache.log4j.*;
 
 %%
 
 %{
+    boolean noError = true;
+    int lineNum = -1;
+
+    Logger log = Logger.getLogger(getClass());
+
     private Symbol new_symbol(int type) {
         return new Symbol(type, yyline+1, yycolumn);
     }
@@ -96,4 +102,5 @@ import java_cup.runtime.Symbol;
 [0-9]+ { return new_symbol(sym.CONST_NUM, new Integer(yytext())); }
 ([a-z]|[A-Z])([a-z]|[A-Z]|[0-9]|_)* {return new_symbol (sym.IDENT, yytext());}
 
-. { System.err.println("Leksicka greska ("+yytext()+") u liniji "+ (yyline + 1) + " i koloni: " + yycolumn);}
+. { log.error("Leksicka greska ("+yytext()+") u liniji "+ (yyline + 1) + " i koloni: " + yycolumn);
+noError = false; }

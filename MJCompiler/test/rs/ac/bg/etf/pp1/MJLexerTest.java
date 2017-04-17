@@ -22,7 +22,7 @@ public class MJLexerTest {
 	}
 	
 	public static void main(String[] args) throws IOException {
-
+		boolean successfullParsing = true;
 		String outputFileName = null;
 		String inputFileName;
 		
@@ -50,7 +50,6 @@ public class MJLexerTest {
 			if (null != outputFileName) {
 				printWriter = new PrintWriter( new File(outputFileName));
 			}
-			//log.info("Compiling source file: " + sourceCode.getAbsolutePath());
 			
 			br = new BufferedReader(new FileReader(sourceCode));
 			Yylex lexer = new Yylex(br);
@@ -60,8 +59,7 @@ public class MJLexerTest {
 				if (currToken != null && currToken.value != null)
 				{
 					if (null == outputFileName) {
-						//System.out.println(currToken.toString() + " " + currToken.value.toString());
-						log.info(currToken.toString() + " " + currToken.value.toString());
+						log.debug(currToken.toString() + " " + currToken.value.toString());
 					}
 					else {
 						printWriter.write(currToken.toString() + " " 
@@ -69,7 +67,15 @@ public class MJLexerTest {
 					}
 				}
 			}
-			System.out.println("Lexer syntax is fulfilled!!");
+			if (lexer.noError)
+			{
+				System.out.println("Lexer syntax is fulfilled!!");
+			}
+			else 
+			{
+				System.exit(-1);
+			}
+			
 		} 
 		finally {
 			if (br != null) try { br.close(); } catch (IOException e1) { log.error(e1.getMessage(), e1); }

@@ -1,114 +1,208 @@
 package unit;
 
 import org.apache.commons.cli.*;
+import utility.*;
+
 
 public class Main {
 	
-	private static int ARG_IDX_UNIT_TEST_TYPE = 0;
-	private static int ARG_IDX_UNIT_TEST_NUMBER = 1;
-	private static int ARG_IDX_BUILD_INCLUDED = 2;
-	private static int ARG_IDX_PREVIOUS_TESTS_INCLUDED = 3;
-	
 	private static final String NAME_TEST_LEXER_SHORT = "lex";
-	private static final String NAME_TEST_LEXER_LONG= "lekser";
-	private static final String NAME_TEST_PARSER_SYNTAX_SHORT = "sin";
-	private static final String NAME_TEST_PARSER_SYNTAX_LONG = "sintaksa";
+	private static final String NAME_TEST_LEXER_LONG= "lexer";
+	private static final String NAME_TEST_PARSER_SYNTAX_SHORT = "syn";
+	private static final String NAME_TEST_PARSER_SYNTAX_LONG = "syntax";
 	private static final String NAME_TEST_PARSER_SEMANTIC_SHORT= "sem";
-	private static final String NAME_TEST_PARSER_SEMANTIC_LONG = "semantika";
+	private static final String NAME_TEST_PARSER_SEMANTIC_LONG = "semantic";
 	private static final String NAME_TEST_GENERATOR_SHORT = "gen";
 	private static final String NAME_TEST_GENERATOR_LONG = "generator";
 	
-	private static final String TEXT_TEST_STARTED = "**********************************Test zapocet******************************\n";
-	private static final String TEXT_TEST_FINISHED = "**********************************Test zavrsen*******************************\n";
+	private static final String TEXT_TEST_STARTED = "**********************************Test begin******************************";
+	private static final String TEXT_TEST_FINISHED = "**********************************Test end*******************************";
+	private static final String TEXT_BUILD_STARTED =  "**********************************Build begin******************************";
+	private static final String TEXT_BUILD_FINISHED =  "**********************************Build end******************************";
 	
-	private static final String CMD_TYPE_SHORT = "t";
-	private static final String CMD_TYPE_LONG = "type";
-	private static final String CMD_TYPE_DESCRIPTION = "tip testa koji se pokrece\n"
+	private static final String FLAG_TYPE_SHORT = "t";
+	private static final String FLAG_TYPE_LONG = "type";
+	private static final String FLAG_TYPE_DESCRIPTION = "tip testa koji se pokrece\n"
 			+ "1) lex, lekser za lekser\n"
 			+ "2) sin, sintaksa za sintaksu\n"
 			+ "3) sem, semantika za semantiku\n"
 			+ "4) gen, generator za generator\n";
 	
-	private static final String CMD_BUILD_SHORT = "b";
-	private static final String CMD_BUILD_LONG = "build";
-	private static final String CMD_BUILD_DESCRIPTION = "da li se kod ponovo build-uje";
+	private static final String FLAG_BUILD_SHORT = "b";
+	private static final String FLAG_BUILD_LONG = "build";
+	private static final String FLAG_BUILD_DESCRIPTION = "da li se kod ponovo build-uje";
 	
-	private static final String CMD_RUN_PREVIOUS_TESTS_SHORT = "rp";
-	private static final String CMD_RUN_PREVIOUS_TESTS_LONG = "runPrevious";
-	private static final String CMD_RUN_PREVIOUS_TESTS_DESCRIPTION = "da li su prethodni testovi ukljuceni";
+	private static final String FLAG_RUN_PREVIOUS_TESTS_SHORT = "rp";
+	private static final String FLAG_RUN_PREVIOUS_TESTS_LONG = "runPrevious";
+	private static final String FLAG_RUN_PREVIOUS_TESTS_DESCRIPTION = "da li su prethodni testovi ukljuceni";
 	
-	private static final String CMD_RUN_TEST_NUMBER_SHORT = "n";
-	private static final String CMD_RUN_TEST_NUMBER_LONG = "number";
-	private static final String CMD_RUN_TEST_NUMBER_DESCRIPTION = "broj unit test-a koji se bira";
+	private static final String FLAG_RUN_TEST_NUMBER_SHORT = "n";
+	private static final String FLAG_RUN_TEST_NUMBER_LONG = "number";
+	private static final String FLAG_RUN_TEST_NUMBER_DESCRIPTION = "broj unit test-a koji se bira";
 	
 	
-	// TODO : pass test number parametar, return value and print error in case of unit test.
-	//
-	public static void testRun(String testType, Boolean buildIncluded, Boolean previousTestsRun, Integer testNum)
+
+	
+	private static void testRunWrapper(int testType, Boolean previousTestsRun,
+										Integer testNum)
+										throws UnitTestResult
 	{
+		if ( (testNum != UnitTest.RUN_ALL_TESTS) && (previousTestsRun))
+		{
+			throw new UnitTestResult(false, UnitTestResult.ERROR_CODE_UNIT_TEST);
+		}
+		
+		if (testNum != UnitTest.RUN_ALL_TESTS)
+		{
+			testRun(testType, testNum);
+		}
+		else
+		{
+			testAllRun(testType, previousTestsRun);	
+		}
+	}
+	
+	
+	private static void testAllRun(int testType, Boolean previousTestsRun) throws UnitTestResult {
+
 		if (previousTestsRun)
 		{
 			switch (testType)
 			{
-				// Maybe another organization?
-				// Let name of unit test be public and instead of NAM... use that static value.
-				// 
-				case NAME_TEST_PARSER_SYNTAX_SHORT:
-				case NAME_TEST_PARSER_SYNTAX_LONG:
-					testRun(NAME_TEST_LEXER_SHORT, buildIncluded, previousTestsRun, testNum);
+				case UnitTestFactory.UNIT_TEST_SYN:
+					testAllRun(UnitTestFactory.UNIT_TEST_LEX, previousTestsRun);
 					break;
-				case NAME_TEST_PARSER_SEMANTIC_SHORT:
-				case NAME_TEST_PARSER_SEMANTIC_LONG:
-					testRun(NAME_TEST_PARSER_SYNTAX_LONG, buildIncluded, previousTestsRun, testNum);
+				case UnitTestFactory.UNIT_TEST_SEM:
+					testAllRun(UnitTestFactory.UNIT_TEST_SYN,  previousTestsRun);
 					break;
-				case NAME_TEST_GENERATOR_SHORT:
-				case NAME_TEST_GENERATOR_LONG:
-					testRun(NAME_TEST_PARSER_SYNTAX_LONG, buildIncluded, previousTestsRun, testNum);
+				case UnitTestFactory.UNIT_TEST_GEN:
+					testAllRun(UnitTestFactory.UNIT_TEST_SEM, previousTestsRun);
 					break;
-					
 			}
 		}
 		
+		for (int testNum = 0; testNum < (new UnitTestFactory()).numberOfTests(testType); testNum ++)
+		{
+			testRun(testType, testNum);
+		}
+		
+				
+	}
+
+
+	// TODO : pass test number parametar, return value and print error in case of unit test.
+	//
+	public static void testRun(int testType, 
+								Integer testNum) 
+								throws UnitTestResult
+	
+	{
+
 		UnitTest unitTest = null;
-		// TODO : Factory if I have time.
-		//
-		System.out.println(TEXT_TEST_STARTED);
-		switch (testType)
+		UnitTestResult result = null;
+		unitTest = new UnitTestFactory().createUnitTest(testType);
+		
+		Utility.println(System.out, Utility.CYAN, TEXT_TEST_STARTED);
+		result = unitTest.executeTest(testNum);
+		if (!result.isSuccessful() &&
+				(result.getTypeError() != UnitTestResult.ERROR_CODE_UNIT_TEST))
 		{
-			case NAME_TEST_LEXER_LONG:
-			case NAME_TEST_LEXER_SHORT:
-				System.out.println(NAME_TEST_LEXER_LONG + "Test");
-				unitTest = new UnitTestLexer();
-				break;
+			throw result;
+		}
+		else if (!result.isSuccessful())
+		{ 
+			
+			Utility.println(System.err, Utility.RED, result.getError());
+		}
+		else
+		{
+			Utility.println(System.err, Utility.GREEN, result.getError());
+		}
+		Utility.println(System.out, Utility.CYAN, TEXT_TEST_FINISHED);
+	}
+	
+	public static void buildAndPrepareWrapper(int testType, 
+			Boolean previousTestsRun)throws UnitTestResult
+	{
+		Utility.println(System.out, Utility.CYAN, TEXT_BUILD_STARTED);
+		buildAndPrepare(testType, previousTestsRun);
+		Utility.println(System.out, Utility.CYAN, TEXT_BUILD_FINISHED);
+	}
+	
+	public static void buildAndPrepare(int testType, 
+										Boolean previousTestsRun)
+												throws UnitTestResult
+														
+	{
+		UnitTest unitTest = null;
+		UnitTestResult result = null;
+		unitTest = new UnitTestFactory().createUnitTest(testType);
+		
+		if (previousTestsRun)
+		{
+			switch (testType)
+			{
+				case UnitTestFactory.UNIT_TEST_SYN:
+				case UnitTestFactory.UNIT_TEST_SEM:
+					result = unitTest.generateSouorceCodeFromSpec();
+					
+					if (!result.isSuccessful())
+					{
+						throw result;
+					}
+					buildAndPrepare(UnitTestFactory.UNIT_TEST_LEX, previousTestsRun);
+					break;
+				case UnitTestFactory.UNIT_TEST_GEN:
+					buildAndPrepare(UnitTestFactory.UNIT_TEST_SEM, previousTestsRun);
+					break;
+			}
 		}
 		
-		if (buildIncluded)
-		{
-			unitTest.buildCode();
-		}
-		unitTest.executeTest(testNum);
-		System.out.println(TEXT_TEST_FINISHED);
+
 		
+		
+		
+		if ( (testType == UnitTestFactory.UNIT_TEST_LEX)
+				|| (testType == UnitTestFactory.UNIT_TEST_GEN)
+				||(!previousTestsRun && (testType == UnitTestFactory.UNIT_TEST_SYN 
+					|| (testType == UnitTestFactory.UNIT_TEST_SEM))))
+		{
+			result = unitTest.generateSouorceCodeFromSpec();
+			
+			if (!result.isSuccessful())
+			{
+				throw result;
+			}
+		}
+		
+		result = unitTest.buildSourceCodeImplementation();
+		if (!result.isSuccessful())
+		{
+			throw result;
+		}
+		result = unitTest.buildUnitTestEnviroment();
+		if (!result.isSuccessful())
+		{
+			throw result;
+		}
 	}
 	
 	public static void main(String[] args) {
 		Options options = new Options();
 		
-		Option optionType = new Option(CMD_TYPE_SHORT, CMD_TYPE_LONG, true, CMD_TYPE_DESCRIPTION);
+		Option optionType = new Option(FLAG_TYPE_SHORT, FLAG_TYPE_LONG, true, FLAG_TYPE_DESCRIPTION);
 		optionType.setRequired(true);
-		// TODO : Change from number to String.
-		//
-		Option optionTestNumber = new Option(CMD_RUN_TEST_NUMBER_SHORT, 
-											 CMD_RUN_TEST_NUMBER_LONG, 
+		Option optionTestNumber = new Option(FLAG_RUN_TEST_NUMBER_SHORT, 
+											 FLAG_RUN_TEST_NUMBER_LONG, 
 											 true, 
-											 CMD_RUN_TEST_NUMBER_DESCRIPTION);
+											 FLAG_RUN_TEST_NUMBER_DESCRIPTION);
 		optionTestNumber.setRequired(false);
-		Option optionBuildIncluded = new Option(CMD_BUILD_SHORT, CMD_BUILD_LONG, true, CMD_BUILD_DESCRIPTION);
+		Option optionBuildIncluded = new Option(FLAG_BUILD_SHORT, FLAG_BUILD_LONG, true, FLAG_BUILD_DESCRIPTION);
 		optionBuildIncluded.setRequired(false); 
-		Option optionPreviousTestsIncluded = new Option(CMD_RUN_PREVIOUS_TESTS_SHORT, 
-														CMD_RUN_PREVIOUS_TESTS_LONG, 
+		Option optionPreviousTestsIncluded = new Option(FLAG_RUN_PREVIOUS_TESTS_SHORT, 
+														FLAG_RUN_PREVIOUS_TESTS_LONG, 
 														true, 
-														CMD_RUN_PREVIOUS_TESTS_DESCRIPTION);
+														FLAG_RUN_PREVIOUS_TESTS_DESCRIPTION);
 		optionBuildIncluded.setRequired(false);
 		
 		options.addOption(optionType);
@@ -129,20 +223,43 @@ public class Main {
             return;
 		}
 		
-		String type = cmd.getOptionValue(CMD_TYPE_LONG);
-		System.out.println("Tip " + type);
-		 
+		String type = cmd.getOptionValue(FLAG_TYPE_LONG);
+		int typeCode = -1;
 		
-		Boolean buildIncluded = Boolean.parseBoolean(cmd.getOptionValue(CMD_BUILD_SHORT));
-		Boolean previousTestsIncluded = Boolean.parseBoolean(cmd.getOptionValue(CMD_RUN_PREVIOUS_TESTS_SHORT));
-		Integer testNum = Integer.parseInt(cmd.getOptionValue(CMD_RUN_TEST_NUMBER_LONG));
+		switch (type)
+		{
+			case NAME_TEST_LEXER_LONG:
+			case NAME_TEST_LEXER_SHORT:
+				typeCode = UnitTestFactory.UNIT_TEST_LEX;
+				break;
+			case NAME_TEST_PARSER_SYNTAX_SHORT:
+			case NAME_TEST_PARSER_SYNTAX_LONG:
+				typeCode = UnitTestFactory.UNIT_TEST_SYN;
+				break;
+			case NAME_TEST_PARSER_SEMANTIC_SHORT:
+			case NAME_TEST_PARSER_SEMANTIC_LONG:
+				typeCode = UnitTestFactory.UNIT_TEST_SEM;
+				break;
+			case NAME_TEST_GENERATOR_SHORT:
+			case NAME_TEST_GENERATOR_LONG:
+				typeCode = UnitTestFactory.UNIT_TEST_GEN;
+				break;
+		}
 		
-		System.out.println("Build ukljucen " + buildIncluded);
-		System.out.println("Prethodni ukljuceni " + previousTestsIncluded);
-		System.out.println("Broj testa " + testNum);
+		Boolean buildIncluded = Boolean.parseBoolean(cmd.getOptionValue(FLAG_BUILD_SHORT));
+		Boolean previousTestsIncluded = Boolean.parseBoolean(cmd.getOptionValue(FLAG_RUN_PREVIOUS_TESTS_SHORT));
+		Integer testNum = Integer.parseInt(cmd.getOptionValue(FLAG_RUN_TEST_NUMBER_LONG));
 		
-		
-		testRun(type, buildIncluded, previousTestsIncluded, testNum);
+		try {
+			if (buildIncluded)
+			{
+				buildAndPrepareWrapper(typeCode, previousTestsIncluded);
+			}
+			//testRunWrapper(typeCode, previousTestsIncluded, testNum);
+		}
+		catch (UnitTestResult result) {
+			Utility.println(System.err, Utility.RED, result.getError());
+		}
 	}
 
 }

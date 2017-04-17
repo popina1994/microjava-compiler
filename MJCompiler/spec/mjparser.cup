@@ -4,6 +4,7 @@ import java_cup.runtime.*;
 import org.apache.log4j.*;
 
 import java.io.*;
+import java.util.LinkedList;
 import rs.etf.pp1.symboltable.Tab;
 import rs.etf.pp1.symboltable.concepts.*;
 import rs.etf.pp1.mj.runtime.*;
@@ -254,28 +255,35 @@ parser code {:
             }
         }
 
-        public void isField()
+        public boolean  isField()
         {
             return isField;
         }
 
-        public void isArrayElement()
+        public boolean isArrayElement()
         {
             return isArrayElement;
         }
 
-        public void IsVar()
+        public boolean  IsVar()
         {
             return isVar;
         }
 
 
-        public LinkedList<Obj> getListDotArray();
-
-
-        public generateLeftValue()
+        public LinkedList<Obj> getListDotArray()
         {
-            if (obj.getKind)
+            return null;
+        }
+
+
+        public void generateLeftValue()
+        {
+        }
+
+        public void generateRightValue()
+        {
+
         }
     }
 
@@ -534,7 +542,13 @@ non terminal ObjResultWrapper Factor;
 non terminal ParActParsEpsilonEpsilon;
 non terminal Boolean BracketExprEpsilon;
 non terminal ObjResultWrapper Designator;
-non terminal DotIdentOrBracketExprListEpsilon, DotIdentOrBracketExprList, DotIdentOrBracketExpr;
+non terminal ObjResultWrapper DesignatorAssign;
+non terminal ObjResultWrapper DotIdentOrBracketExprListEpsilonAssign;
+non terminal ObjResultWrapper DotIdentOrBracketExprListAssign;
+non terminal ObjResultWrapper  DotIdentOrBracketExprAssign;
+non terminal ObjResultWrapper DotIdentOrBracketExprListEpsilon;
+non terminal ObjResultWrapper DotIdentOrBracketExprList;
+non terminal ObjResultWrapper DotIdentOrBracketExpr;
 non terminal Integer Assignop;
 non terminal Relop;
 non terminal Integer AddopLeft;
@@ -1301,14 +1315,8 @@ DesignatorStatementOrAssignOrErrorParRight ::=
             ;
 
 DesignatorStatementOrAssignErrorSemi ::=
-        {:
-            generateLeft = true;
-        :}
         DesignatorStatement SEMI_COLUMN
         |
-        {:
-            generateLeft = true;
-        :}
         AssingmentStatementOrErrorSemi:expr
         {:
             RESULT = expr;
@@ -1317,9 +1325,6 @@ DesignatorStatementOrAssignErrorSemi ::=
 
 
 DesignatorStatement ::=
-        {:
-            generateLeft = true;
-        :}
         DesignatorIncOrDec:incOrDec
         {:
             RESULT = incOrDec;
@@ -1407,11 +1412,12 @@ AssingmentStatementOrErrorSemi ::=
                 {
                     Code.put(op);
                 }
-                Code.store(dest);
+                // TO DO:
+                //Code.store(dest);
             }
             else
             {
-                RSEULT = dest.setIsSemanticError(true);
+                RESULT = dest.setIsSemanticError(true);
             }
         :}
         ;
@@ -1718,14 +1724,14 @@ BracketExprEpsilon ::=
 Designator ::=
             IDENT:name
             {:
-                 curObjWrappFieldOrElem.getObj() = Tab.find(name);
+                 curObjWrappFieldOrElem.setObj(Tab.find(name));
                  Code.load(curObjWrappFieldOrElem.getObj());
             :}
             DotIdentOrBracketExprListEpsilon:objWrapper
             {:
                 if (objWrapper == null)
                 {
-                    RESULT = new ObjResultWrapper(curObjWrappFieldOrElem.getObj().getObj(), curObjWrappFieldOrElem.getObj().getObj().getKind() == Obj.Con);
+                    RESULT = new ObjResultWrapper(curObjWrappFieldOrElem.getObj(), curObjWrappFieldOrElem.getObj().getKind() == Obj.Con);
                 }
                 else if (!objWrapper.getObj().equals(Tab.noObj)&& !objWrapper.isSemanticError())
                 {
@@ -1733,7 +1739,7 @@ Designator ::=
                 }
                 else
                 {
-                    RESULT = objWrap.setIsSemanticError(true);
+                    RESULT = objWrapper.setIsSemanticError(true);
                 }
 
             :}
@@ -1752,9 +1758,9 @@ DotIdentOrBracketExprListEpsilon ::=
 DotIdentOrBracketExprList ::=
             DotIdentOrBracketExprList:left DotIdentOrBracketExpr:objWrapper
             {:
-                if (leftFactor.isSemanticError() || objWrapper.isSemanticError())
+                if (left.isSemanticError() || objWrapper.isSemanticError())
                 {
-                    RESULT = objWrapper.isSemanticError(true);
+                    RESULT = objWrapper.setIsSemanticError(true);
                 }
                 else
                 {
@@ -1763,7 +1769,7 @@ DotIdentOrBracketExprList ::=
 
             :}
             |
-            DotIdentOrBracketExpr
+            DotIdentOrBracketExpr:objWrapper
             {:
                 RESULT = objWrapper;
             :}
@@ -1781,10 +1787,10 @@ DotIdentOrBracketExpr ::=
                 {
                     Code.load(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
                 }
-            }
             else
             {
-                curObjFieldOrElem.setIsSemanticError(true);
+                // TODO :
+                //==curObjFieldOrElem.setIsSemanticError(true);
 
             }
         :}
@@ -1800,7 +1806,7 @@ DesignatorAssign ::=
         {:
             Obj obj = Tab.find(name);
             curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
-            curObjWrappFieldOrElem.getObj().getListDotArray().addLast(obj);
+            curObjWrappFieldOrElem.getListDotArray().addLast(obj);
 
         :}
         DotIdentOrBracketExprListEpsilonAssign:objWrapper
@@ -1816,7 +1822,7 @@ DesignatorAssign ::=
             }
             else
             {
-                RESULT = objWrap.setIsSemanticError(true);
+                RESULT = objWrapper.setIsSemanticError(true);
             }
 
             :}
@@ -1835,9 +1841,9 @@ DotIdentOrBracketExprListEpsilonAssign ::=
 DotIdentOrBracketExprListAssign ::=
             DotIdentOrBracketExprListAssign:left DotIdentOrBracketExprAssign:objWrapper
             {:
-                if (leftFactor.isSemanticError() || objWrapper.isSemanticError())
+                if (left.isSemanticError() || objWrapper.isSemanticError())
                 {
-                    RESULT = objWrapper.isSemanticError(true);
+                    RESULT = objWrapper.setIsSemanticError(true);
                 }
                 else
                 {
@@ -1846,7 +1852,7 @@ DotIdentOrBracketExprListAssign ::=
 
             :}
             |
-            DotIdentOrBracketExpr
+            DotIdentOrBracketExpr:objWrapper
             {:
                 RESULT = objWrapper;
             :}
@@ -1862,13 +1868,12 @@ DotIdentOrBracketExprAssign ::=
                 &&
                 !curArrayDotType.getElemType().equals(Tab.noType))
                 {
-                    ObjResultWrapper.getListDotArray().addLast(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
+                    curObjWrappFieldOrElem.getListDotArray().addLast(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
                     //Code.load(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
                 }
-            }
             else
             {
-                curObjWrappFieldOrElem.getObj().setIsSemanticError(true);
+                curObjWrappFieldOrElem.setIsSemanticError(true);
 
             }
         :}

@@ -3,6 +3,7 @@
 package rs.ac.bg.etf.pp1;
 
 import java_cup.runtime.Symbol;
+import org.apache.log4j.*;
 
 
 /**
@@ -308,6 +309,11 @@ class Yylex implements java_cup.runtime.Scanner {
   private int zzFinalHighSurrogate = 0;
 
   /* user code: */
+    boolean noError = true;
+    int lineNum = -1;
+
+    Logger log = Logger.getLogger(getClass());
+
     private Symbol new_symbol(int type) {
         return new Symbol(type, yyline+1, yycolumn);
     }
@@ -703,7 +709,8 @@ class Yylex implements java_cup.runtime.Scanner {
       else {
         switch (zzAction < 0 ? zzAction : ZZ_ACTION[zzAction]) {
           case 1: 
-            { System.err.println("Leksicka greska ("+yytext()+") u liniji "+ (yyline + 1) + " i koloni: " + yycolumn);
+            { log.error("Leksicka greska ("+yytext()+") u liniji "+ (yyline + 1) + " i koloni: " + yycolumn);
+noError = false;
             }
           case 54: break;
           case 2: 

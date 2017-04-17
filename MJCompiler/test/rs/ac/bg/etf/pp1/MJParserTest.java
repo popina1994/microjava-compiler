@@ -68,6 +68,8 @@ public class MJParserTest {
 			
 			@SuppressWarnings("deprecation")
 			MJParser p = new MJParser(lexer);
+			// Prints out to System.error.
+			//
 			if (debug) {
 				Symbol s = p.debug_parse();
 			}

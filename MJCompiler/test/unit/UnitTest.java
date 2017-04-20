@@ -70,6 +70,15 @@ public abstract class UnitTest {
 		}
 	}
 	
+	protected static void addPath(String path, String[] tests)
+	{
+		for (int idx = 0; idx < tests.length; idx ++)
+		{
+			tests[idx] = path + "/" + tests[idx];
+		}
+	}
+	
+	
 	private static LinkedList<String> listArgPreInitializationBuild()
 	{
 		LinkedList<String> listArgs = new LinkedList<>();
@@ -88,15 +97,16 @@ public abstract class UnitTest {
 	
 	private static UnitTestResult executeCommand(LinkedList<String> cmdAndArgs)
 	{
-		ProcessBuilder processBuilder = new ProcessBuilder(cmdAndArgs);
+		ProcessBuilder processBuilder = new ProcessBuilder(cmdAndArgs).inheritIO();
 		Process process;
 		
 		try {
 			processBuilder.redirectErrorStream(true);
+
 			process = processBuilder.start();
 			int errCode = process.waitFor();
 			
-			System.out.println(output(process.getInputStream()));
+			//System.out.println(output(process.getInputStream()));
 			
 			if (errCode != 0)
 			{

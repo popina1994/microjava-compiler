@@ -255,11 +255,12 @@ public class Main {
 			{
 				buildAndPrepareWrapper(typeCode, previousTestsIncluded);
 			}
-			//testRunWrapper(typeCode, previousTestsIncluded, testNum);
+			testRunWrapper(typeCode, previousTestsIncluded, testNum);
 		}
 		catch (UnitTestResult result) {
 			Utility.println(System.err, Utility.RED, result.getError());
 		}
+		
 	}
 
 }

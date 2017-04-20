@@ -8,21 +8,21 @@ int niz[];
 
 bool eww[];
 char cLocal;
-{	
+{
 	void main() {
 		//cLocal = 'a';
-		prom = 1;
+		prom = ;
 		//prom2 = 2;
 		//prom ++;
 		//prom2 --;
 		//read(cLocal);
 		//print(cLocal);
-		//print(prom);
+		print(prom);
 		//print(prom2, 0);
 		//niz = new int[5];
-		niz[0] = 1;
-		
-		
+		//niz[0] = 1;
+
+
 	}
 	int main2(int t, int b, int c) {}
 }

@@ -52,9 +52,9 @@ parser code {:
                 objToVisit.getType().accept(this);
 
             output.append(", ");
-            output.append(objToVisit.getAdr());
+            output.append("Adr:" + objToVisit.getAdr());
             output.append(", ");
-            output.append(objToVisit.getLevel() + " ");
+            output.append("Level:" + objToVisit.getLevel() + " ");
 
             if (objToVisit.getKind() == Obj.Prog || objToVisit.getKind() == Obj.Meth) {
                 output.append("\n");
@@ -158,11 +158,10 @@ parser code {:
         Obj obj;
         boolean isRightValue;
         boolean isLeftValue;
+        boolean isVar;
+        boolean isField;
         boolean semanticError = false;
-        private boolean isVar = false;
-        private boolean isArrayElement = false;
-        private boolean isField = false;
-        LinkedList <Obj> listDotArray = new LinkedList<>();
+        boolean isArrayElement;
 
         public ObjResultWrapper(Obj obj, boolean isRightValue) {
             this.obj = obj;
@@ -181,12 +180,12 @@ parser code {:
             return isRightValue;
         }
 
-        public void setIsRightValue(boolean isRightValue) {
+        public void setRightValue(boolean isRightValue) {
             this.isRightValue = isRightValue;
             this.isLeftValue = !isRightValue;
         }
 
-        public void setisLeftValue(boolean isLeftValue) {
+        public void setLeftValue(boolean isLeftValue) {
             this.isLeftValue = isLeftValue;
             this.isRightValue = !isLeftValue;
         }
@@ -199,7 +198,7 @@ parser code {:
             return semanticError;
         }
 
-        public ObjResultWrapper setIsSemanticError(boolean semanticError) {
+        public ObjResultWrapper setSemanticError(boolean semanticError) {
             this.semanticError = semanticError;
             return this;
         }
@@ -271,12 +270,6 @@ parser code {:
         }
 
 
-        public LinkedList<Obj> getListDotArray()
-        {
-            return null;
-        }
-
-
         public void generateLeftValue()
         {
         }
@@ -313,6 +306,8 @@ parser code {:
     }
 
     boolean errorDetected = false;
+    boolean syntaxError = false;
+    boolean semanticError = false;
 
     Logger log = Logger.getLogger(getClass());
 
@@ -329,11 +324,13 @@ parser code {:
     // Overrideovana MJParser funkcija.
     //
     public void syntax_error(Symbol cur_token) {
+        syntaxError = true;
         report_error("\nSintaksna greska", cur_token);
     }
 
     public void semnatic_error(String msg, Symbol sym)
     {
+        semanticError = true;
         report_error("\nSemnaticka greska : " + msg, sym);
     }
 
@@ -457,6 +454,12 @@ parser code {:
         return true;
     }
 
+    WrapperObj find_for_use(String name, String additionalMessage)
+    {
+        return null;
+    }
+
+
 
 :}
 
@@ -542,10 +545,6 @@ non terminal ObjResultWrapper Factor;
 non terminal ParActParsEpsilonEpsilon;
 non terminal Boolean BracketExprEpsilon;
 non terminal ObjResultWrapper Designator;
-non terminal ObjResultWrapper DesignatorAssign;
-non terminal ObjResultWrapper DotIdentOrBracketExprListEpsilonAssign;
-non terminal ObjResultWrapper DotIdentOrBracketExprListAssign;
-non terminal ObjResultWrapper  DotIdentOrBracketExprAssign;
 non terminal ObjResultWrapper DotIdentOrBracketExprListEpsilon;
 non terminal ObjResultWrapper DotIdentOrBracketExprList;
 non terminal ObjResultWrapper DotIdentOrBracketExpr;
@@ -603,7 +602,7 @@ Program ::=
         }
         else {
             parser.log.info("Uspesno parsiranje!!!", null);
-            String fileName = "test/Generator/program.obj";
+            String fileName = "test/generator/program.obj";
             File f = new File(fileName);
             if (f.exists())
             {
@@ -638,7 +637,7 @@ GlobalDecl ::=
     //
 	GlobalVarDecl
     {:
-        Tab.dump(TabExt.symbolTableVisitor);
+        //Tab.dump(TabExt.symbolTableVisitor);
     :}
 	|
 
@@ -1219,7 +1218,7 @@ Statement ::=
                 }
                 else
                 {
-                    expr.setIsSemanticError(true);
+                    expr.setSemanticError(true);
                 }
             RESULT = expr;
             parser.log.debug("Prepoznat PRINT");
@@ -1338,7 +1337,7 @@ DesignatorStatement ::=
         ;
 
 DesignatorIncOrDec ::=
-        DesignatorAssign:designator IncOrDec:op
+        Designator:designator IncOrDec:op
         {:
             if (!designator.isSemanticError() &&
                 designator.isLeftValue() && designator.getObj().getType().equals(Tab.intType))
@@ -1349,7 +1348,7 @@ DesignatorIncOrDec ::=
                 }
                 else
                 {
-                    RESULT = designator.setIsSemanticError(true);
+                    RESULT = designator.setSemanticError(true);
                 }
         :}
         ;
@@ -1367,7 +1366,7 @@ IncOrDec ::=
     ;
 
 DesignatorFuncCall ::=
-        DesignatorAssign
+        Designator
         PAR_LEFT ActParsEpsilon PAR_RIGHT
         ;
 
@@ -1378,27 +1377,21 @@ ActParsEpsilon ::=
         ;
 
 AssingmentStatement ::=
-        DesignatorAssign:dst
+        Designator:dst
         Assignop:op
         Expr : expr
         ;
 
 AssingmentStatementOrErrorSemi ::=
-        DesignatorAssign:dest
+        Designator:dest
         Assignop:op
         {:
             if (dest.isSemanticError() || !dest.isLeftValue())
             {
-                RESULT = dest.setIsSemanticError(true);
+                RESULT = dest.setSemanticError(true);
             }
-            else
-            {
-                dest.generateLeftValue();
-                if (op != OP_ASSIGN_CODE)
-                {
-                    dest.generateRightValue();
-                }
-            }
+            // TO DO add checks for array and class.
+            //
 
         :}
         AssignOpExpOrErrorSemi : expr
@@ -1412,12 +1405,15 @@ AssingmentStatementOrErrorSemi ::=
                 {
                     Code.put(op);
                 }
-                // TO DO:
-                //Code.store(dest);
+                Code.store(dest.getObj());
+                if (op == OP_ASSIGN_CODE)
+                {
+                    Code.put(Code.pop);
+                }
             }
             else
             {
-                RESULT = dest.setIsSemanticError(true);
+                RESULT = dest.setSemanticError(true);
             }
         :}
         ;
@@ -1477,21 +1473,21 @@ IfConditionParRight ::=
             :}
             ;
 OpOrCondTermList ::=
-            OpOrCondTermList OP_OR CondTerm
-            |
-            CondTerm
-            ;
+        OpOrCondTermList OP_OR CondTerm
+        |
+        CondTerm
+        ;
 
 /******************* CondTerm   *****************************/
 /************************************************************/
 CondTerm ::=
-            OpAndCondFactList
-            ;
+        OpAndCondFactList
+        ;
 OpAndCondFactList ::=
-            OpAndCondFactList OP_AND CondFact
-            |
-            CondFact
-            ;
+        OpAndCondFactList OP_AND CondFact
+        |
+        CondFact
+        ;
 
 /******************* CondFact   *****************************/
 /************************************************************/
@@ -1499,11 +1495,11 @@ CondFact ::=
             Expr RelopExprEpsilon
             ;
 RelopExprEpsilon ::=
-            Relop
-            Expr
-            |
-            /* epsilon */
-            ;
+        Relop
+        Expr
+        |
+        /* epsilon */
+        ;
 
 
 /******************* Expr       *****************************/
@@ -1523,51 +1519,53 @@ Expr ::=
             }
             else
             {
-                RESULT = term.setIsSemanticError(true);
+                RESULT = term.setSemanticError(true);
             }
 
         :}
         ;
 
 OpSubEpsilon ::=
-            OP_SUB
-            {:
-                RESULT = true;
-            :}
-            |
-            {:
-                RESULT = false;
-            :}
-            ;
+        OP_SUB
+        {:
+            RESULT = true;
+        :}
+        |
+        {:
+            RESULT = false;
+        :}
+        ;
 
 AddopRightTerm ::=
-            AddopLeftTerm:leftTerm AddopRight:op AddopRightTerm:rightTerm
-            {:
-            // Treba dodati provere za polja i sve ostale gluposti
+        AddopLeftTerm:leftTerm AddopRight:op AddopRightTerm:rightTerm
+        {:
+        // Treba dodati provere za polja i sve ostale gluposti
+        //
+        if (leftTerm.getObj().getType().equals(Tab.intType) &&
+        rightTerm.getObj().getType().equals(Tab.intType)
+        && leftTerm.isLeftValue()
+        && !leftTerm.isSemanticError()
+        && !rightTerm.isSemanticError())
+        {
+            Code.put(op);
+            Code.put(Code.dup);
+            Code.store(leftTerm.getObj());
+            // TO DO : ARray class and other shit.
             //
-            if (leftTerm.getObj().getType().equals(Tab.intType) &&
-            rightTerm.getObj().getType().equals(Tab.intType)
-            && leftTerm.isLeftValue()
-            && !leftTerm.isSemanticError()
-            && !rightTerm.isSemanticError())
-            {
-                Code.put(op);
-                Code.put(Code.dup);
-                Code.store(leftTerm.getObj());
-                RESULT = leftTerm;
-            }
-            else
-            {
-                // set errorr;
-                RESULT = leftTerm.setIsSemanticError(true);
-            }
+            RESULT = leftTerm;
+        }
+        else
+        {
+            // set errorr;
+            RESULT = leftTerm.setSemanticError(true);
+        }
+    :}
+        |
+        AddopLeftTerm:type
+        {:
+            RESULT = type;
         :}
-            |
-            AddopLeftTerm:type
-            {:
-                RESULT = type;
-            :}
-            ;
+        ;
 AddopLeftTerm ::=
         AddopLeftTerm:leftTerm AddopLeft:op Term:rightTerm
         {:
@@ -1579,7 +1577,7 @@ AddopLeftTerm ::=
         }
         else
         {
-            RESULT = leftTerm.setIsSemanticError(true);
+            RESULT = leftTerm.setSemanticError(true);
         }
         :}
         |
@@ -1619,7 +1617,7 @@ MullopRightFactor ::=
             else
             {
                 // set errorr;
-                RESULT = leftFactor.setIsSemanticError(true);
+                RESULT = leftFactor.setSemanticError(true);
             }
         :}
         |
@@ -1642,7 +1640,7 @@ MulopLeftFactor ::=
             }
             else
             {
-                RESULT = leftFactor.setIsSemanticError(true);
+                RESULT = leftFactor.setSemanticError(true);
             }
         :}
         |
@@ -1672,6 +1670,9 @@ Factor ::=
             if (isArray)
             {
                 Code.put(Code.newarray);
+                // TODO: For classes which are non word alligned,
+                // alloc using char
+                //
                 if (type.equals(Tab.charType))
                 {
                     Code.put(0);
@@ -1685,6 +1686,8 @@ Factor ::=
             }
             else
             {
+                // TODO : if it's class alloc as it is supposed to be.
+                //
                 if (type.equals(Tab.charType))
                 {
                     Code.put(CHAR_SIZE);
@@ -1694,6 +1697,8 @@ Factor ::=
                     Code.put(INT_SIZE);
                 }
             }
+            // TO DO : Add check of errors.
+            //
         :}
         |
         PAR_LEFT Expr:result PAR_RIGHT
@@ -1724,22 +1729,37 @@ BracketExprEpsilon ::=
 Designator ::=
             IDENT:name
             {:
-                 curObjWrappFieldOrElem.setObj(Tab.find(name));
-                 Code.load(curObjWrappFieldOrElem.getObj());
+                Obj obj = Tab.find(name);
+                curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
+                // TODO: add checks for types...
+                //
+                if (obj == Tab.noObj)
+                {
+                    curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else
+                {
+                    Code.load(curObjWrappFieldOrElem.getObj());
+                }
+
             :}
             DotIdentOrBracketExprListEpsilon:objWrapper
             {:
-                if (objWrapper == null)
+                if ( (!curObjWrappFieldOrElem.isSemanticError())
+                && (objWrapper == null))
                 {
-                    RESULT = new ObjResultWrapper(curObjWrappFieldOrElem.getObj(), curObjWrappFieldOrElem.getObj().getKind() == Obj.Con);
+
+                    ObjResultWrapper objWrap = new ObjResultWrapper(curObjWrappFieldOrElem.getObj(), curObjWrappFieldOrElem.getObj().getKind() == Obj.Con);
+                    RESULT = objWrap;
                 }
-                else if (!objWrapper.getObj().equals(Tab.noObj)&& !objWrapper.isSemanticError())
+                else if ( (!objWrapper.isSemanticError())
+                && (!objWrapper.getObj().equals(Tab.noObj)) )
                 {
                     RESULT = objWrapper;
                 }
                 else
                 {
-                    RESULT = objWrapper.setIsSemanticError(true);
+                    RESULT = objWrapper.setSemanticError(true);
                 }
 
             :}
@@ -1760,7 +1780,7 @@ DotIdentOrBracketExprList ::=
             {:
                 if (left.isSemanticError() || objWrapper.isSemanticError())
                 {
-                    RESULT = objWrapper.setIsSemanticError(true);
+                    RESULT = objWrapper.setSemanticError(true);
                 }
                 else
                 {
@@ -1779,102 +1799,20 @@ DotIdentOrBracketExpr ::=
         |
         BRACKET_LEFT Expr BRACKET_RIGHT
         {:
-            Struct curArrayDotType = curObjFieldOrElem.getType();
-            if ( (curArrayDotType != null)
-                &&curArrayDotType.equals(Struct.Array)
-                &&
-                !curArrayDotType.getElemType().equals(Tab.noType))
-                {
-                    Code.load(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
-                }
-            else
-            {
-                // TODO :
-                //==curObjFieldOrElem.setIsSemanticError(true);
-
-            }
-        :}
-        |
-        BRACKET_LEFT error BRACKET_RIGHT
-        {:
-            parser.report_error("Uspesan oporavak od greske kod indeksa niza,  BRACKET_RIGHT je resio stvar" , null);
-        :}
-        ;
-
-DesignatorAssign ::=
-        IDENT:name
-        {:
-            Obj obj = Tab.find(name);
-            curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
-            curObjWrappFieldOrElem.getListDotArray().addLast(obj);
-
-        :}
-        DotIdentOrBracketExprListEpsilonAssign:objWrapper
-        {:
-            if (objWrapper == null)
-            {
-                RESULT = curObjWrappFieldOrElem;
-            }
-            else if (!objWrapper.getObj().equals(Tab.noObj)
-                && !objWrapper.isSemanticError())
-            {
-                RESULT = objWrapper;
-            }
-            else
-            {
-                RESULT = objWrapper.setIsSemanticError(true);
-            }
-
-            :}
-            ;
-DotIdentOrBracketExprListEpsilonAssign ::=
-            DotIdentOrBracketExprListAssign:objWrap
-            {:
-                RESULT = objWrap;
-            :}
-            |
-            {:
-                RESULT = null;
-            :}
-            /* epsilon */
-            ;
-DotIdentOrBracketExprListAssign ::=
-            DotIdentOrBracketExprListAssign:left DotIdentOrBracketExprAssign:objWrapper
-            {:
-                if (left.isSemanticError() || objWrapper.isSemanticError())
-                {
-                    RESULT = objWrapper.setIsSemanticError(true);
-                }
-                else
-                {
-                    RESULT = objWrapper;
-                }
-
-            :}
-            |
-            DotIdentOrBracketExpr:objWrapper
-            {:
-                RESULT = objWrapper;
-            :}
-            ;
-DotIdentOrBracketExprAssign ::=
-        DOT IDENT
-        |
-        BRACKET_LEFT Expr BRACKET_RIGHT
-        {:
             Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType();
-            if ( (curArrayDotType != null)
-                &&curArrayDotType.equals(Struct.Array)
-                &&
-                !curArrayDotType.getElemType().equals(Tab.noType))
+            if ( !curObjWrappFieldOrElem.isSemanticError()
+                && (curArrayDotType != null)
+                && curArrayDotType.equals(Struct.Array)
+                && !curArrayDotType.getElemType().equals(Tab.noType))
                 {
-                    curObjWrappFieldOrElem.getListDotArray().addLast(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
-                    //Code.load(new Obj(Obj.Elem, "", curArrayDotType.getElemType()));
+                    Obj obj = new Obj(Obj.Elem, "", curArrayDotType.getElemType());
+                    curObjWrappFieldOrElem.setObj(obj);
+                    Code.load(obj);
+                    RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
                 }
             else
             {
-                curObjWrappFieldOrElem.setIsSemanticError(true);
-
+                RESULT = curObjWrappFieldOrElem.setSemanticError(true);
             }
         :}
         |
@@ -1883,9 +1821,6 @@ DotIdentOrBracketExprAssign ::=
             parser.report_error("Uspesan oporavak od greske kod indeksa niza,  BRACKET_RIGHT je resio stvar" , null);
         :}
         ;
-
-
-
 
 
 /**********************   AssignOp    ****************************/

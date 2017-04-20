@@ -8,19 +8,12 @@ public class UnitTestSyntax extends UnitTestParser {
 			"MJSyntaxTest1.mj",
 			"MJSyntaxTest2.mj"
 	};
-	private static final String PATH_TEST_LEXER_RUN = PATH_TEST + "/parser/syntax";
+	private static final String PATH_TEST_SYNTAX_RUN = PATH_TEST + "/parser/syntax";
 	
-	private static void addPath(String path, String[] tests)
+
+	static 
 	{
-		for (int idx = 0; idx < tests.length; idx ++)
-		{
-			tests[idx] = path + "/" + tests[idx];
-		}
-	}
-	
-	public static void initTest()
-	{
-		addPath(PATH_TEST_LEXER_RUN, TEST_MICRO_JAVA_PARSER_SYNTAX);
+		addPath(PATH_TEST_SYNTAX_RUN, TEST_MICRO_JAVA_PARSER_SYNTAX);
 	}
 	
 	public UnitTestSyntax(String name) {
@@ -30,8 +23,15 @@ public class UnitTestSyntax extends UnitTestParser {
 
 	@Override
 	protected LinkedList<String> argumentsListUnitTestRun(int unitTestNum) {
-		// TODO Auto-generated method stub
-		return null;
+		LinkedList<String> listArgs = new LinkedList<>();
+		listArgs.addLast(PATH_JAVA_EXE);
+		listArgs.addLast(FLAG_JAVA_RUN_NOT_MAIN);
+		listArgs.addLast(CLASS_PATH);
+		listArgs.addLast(PATH_TEST_UNIT_PROGRAM);
+		listArgs.addLast(TEST_MICRO_JAVA_PARSER_SYNTAX[unitTestNum]);
+		listArgs.add("true"/*isSyntax*/);
+		return listArgs;
+
 	}
 
 }

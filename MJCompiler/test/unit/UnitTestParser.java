@@ -16,7 +16,7 @@ public abstract class UnitTestParser extends UnitTest{
 													};
 	
 
-	protected static final String PATH_TEST_UNIT_PROGRAM = PATH_PROJECT_PACKAGE + "/MJParserTest.java";
+	protected static final String PATH_TEST_UNIT_PROGRAM = PATH_PROJECT_PACKAGE + "/MJParserTest";
 	
 	public UnitTestParser(String name) {
 		super(name);
@@ -31,7 +31,7 @@ public abstract class UnitTestParser extends UnitTest{
 		listArgs.addLast(FLAG_JAVA_COMPILE_CLASS_PATH);
 		listArgs.addLast(CLASS_PATH);
 		
-		listArgs.addLast(PATH_TEST + "/" + PATH_TEST_UNIT_PROGRAM);
+		listArgs.addLast(PATH_TEST + "/" + PATH_TEST_UNIT_PROGRAM + ".java");
 		
 		// Where to store built java files.
 		//

@@ -11,9 +11,9 @@ PACKAGE=rs/ac/bg/etf/pp1/
 SRC_UTIL=util
 #Flags for unit tests
 FLAG_TYPE=syn
-FLAG_RUN_PREV=true
+FLAG_RUN_PREV=false
 FLAG_RUN_BUILD=true
-FLAG_TEST_NUM=-1
+FLAG_TEST_NUM=0
 JAVA_FLAGS=-t $(FLAG_TYPE) -n $(FLAG_TEST_NUM) -b $(FLAG_RUN_BUILD) -rp $(FLAG_RUN_PREV)
 build:
 	$(JAVAC) -cp $(LIB)\* $(TEST)unit/*.java $(TEST)utility/*.java -d $(BIN)

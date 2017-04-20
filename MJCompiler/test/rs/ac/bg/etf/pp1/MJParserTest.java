@@ -26,9 +26,12 @@ public class MJParserTest {
 	
 	public static void main(String[] args) throws Exception {
 		
+		
+		
 		String outputFileName = null;
 		String inputFileName = null;
 		boolean debug = false;
+		boolean isSyntaxTest = true;
 		PrintWriter printWriter = null;
 		File sourceCode = null;
 		
@@ -37,20 +40,29 @@ public class MJParserTest {
 		}
 		else if (2 == args.length) {
 			inputFileName = args[0];
-			debug = Boolean.parseBoolean(args[1]);
+			isSyntaxTest = Boolean.parseBoolean(args[1]);;
+			
 		}
 		else if (3 == args.length){
 			inputFileName = args[0];
-			debug = Boolean.parseBoolean(args[1]);
-			outputFileName = args[2];
-			
+			isSyntaxTest = Boolean.parseBoolean(args[1]);;
+			debug = Boolean.parseBoolean(args[2]);
+		}
+		else if (4 == args.length)
+		{
+			inputFileName = args[0];
+			isSyntaxTest = Boolean.parseBoolean(args[1]);
+			debug = Boolean.parseBoolean(args[2]);
+			outputFileName = args[3];
 		}
 		else {
 			System.err.println("Pogresni argumenti");
 			return;
 		}
+
 		
-		Logger log = Logger.getLogger(MJLexerTest.class);
+		
+		Logger log = Logger.getLogger(MJParserTest.class);
 		Reader br = null;
 		try {
 			
@@ -70,6 +82,8 @@ public class MJParserTest {
 			MJParser p = new MJParser(lexer);
 			// Prints out to System.error.
 			//
+			
+		
 			if (debug) {
 				Symbol s = p.debug_parse();
 			}
@@ -77,6 +91,10 @@ public class MJParserTest {
 				Symbol s  = p.parse();
 			}
 			
+			if (isSyntaxTest && p.syntaxError)
+			{
+				System.exit(-1);
+			}
 			
 			//log.info("Print calls" + p.printCallCount);
 			
@@ -119,6 +137,7 @@ public class MJParserTest {
 				printWriter.close();
 			}
 		}
+		
 	}
 		
 			

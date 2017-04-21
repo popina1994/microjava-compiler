@@ -1173,6 +1173,7 @@ Statement ::=
                 || (des.getObj().getType().equals(Tab.charType))
                 || (des.getObj().getType().equals(TabExt.boolType))))
             {
+                //des.generateRightValue();
                 Code.put(Code.pop);
                 if (des.getObj().getType().equals(Tab.charType))
                 {
@@ -1404,9 +1405,6 @@ AssingmentStatementOrErrorSemi ::=
             {
                 if (op != OP_ASSIGN_CODE)
                 {
-                    // Vrednost na steku nije duplirana jer
-                    // treba samo da se koristi za izracunavanje
-                    // Nista za dalje vrednosti.
                     Code.put(op);
                 }
                 Code.store(dest.getObj());
@@ -1639,7 +1637,6 @@ MulopLeftFactor ::=
             if (leftFactor.getObj().getType().equals(Tab.intType)
             && (rightFactor.getObj().getType().equals(Tab.intType)))
             {
-
                 Code.put(op);
                 RESULT = new ObjResultWrapper(new Obj(Obj.Con,"",Tab.intType), true);
             }
@@ -1744,6 +1741,8 @@ Designator ::=
                 }
                 else
                 {
+
+
                     Code.load(curObjWrappFieldOrElem.getObj());
                 }
 
@@ -1783,7 +1782,6 @@ DotIdentOrBracketExprListEpsilon ::=
 DotIdentOrBracketExprList ::=
             DotIdentOrBracketExprList:left DotIdentOrBracketExpr:objWrapper
             {:
-                // TODO dodaj proveru da li je levo klasa ili niz (drugo nista ne moze...), i tek onda expandujes to ce ti biti nivo C, do tad ne brini (sledeca nedelja :O )
                 if (left.isSemanticError() || objWrapper.isSemanticError())
                 {
                     RESULT = objWrapper.setSemanticError(true);
@@ -1813,7 +1811,7 @@ DotIdentOrBracketExpr ::=
                 {
                     Obj obj = new Obj(Obj.Elem, "", curArrayDotType.getElemType());
                     curObjWrappFieldOrElem.setObj(obj);
-                    //Code.load(obj);
+                    Code.load(obj);
                     RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
                 }
             else

@@ -2003,6 +2003,8 @@ class CUP$MJParser$actions {
             {
                 Tab.chainLocalSymbols(TabExt.curMethod);
             }
+            // TODO : Sumnjivo mi ovo nesto, mozda ranije treba (da bi se spremio stek)
+            //
             TabExt.curMethod.setAdr(Code.pc);
             if (nameOfMethod.equals(METHOD_ENTRY_NAME))
             {
@@ -2042,7 +2044,7 @@ class CUP$MJParser$actions {
             // Dealocira se stek.
             //
             Code.put(Code.exit);
-            // Povratna vrednost se menja.
+            // TODO : Povratna vrednost se menja.
             //
             Code.put(Code.return_);
             Tab.closeScope();
@@ -3664,6 +3666,8 @@ class CUP$MJParser$actions {
                 }
                 else
                 {
+
+
                     Code.load(curObjWrappFieldOrElem.getObj());
                 }
 

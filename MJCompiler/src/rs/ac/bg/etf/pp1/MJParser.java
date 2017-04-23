@@ -1042,6 +1042,12 @@ public class MJParser extends java_cup.runtime.lr_parser {
     boolean errorDetected = false;
     boolean syntaxError = false;
     boolean semanticError = false;
+    String fileName = "test/generator/program.obj";
+
+
+    public void setFileName(String fileName){
+        this.fileName = fileName;
+    }
 
     Logger log = Logger.getLogger(getClass());
 
@@ -1303,7 +1309,7 @@ class CUP$MJParser$actions {
         }
         else {
             parser.log.info("Uspesno parsiranje!!!", null);
-            String fileName = "test/generator/program.obj";
+            //String fileName = "test/generator/program.obj";
             File f = new File(fileName);
             if (f.exists())
             {

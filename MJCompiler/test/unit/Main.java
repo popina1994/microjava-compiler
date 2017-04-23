@@ -116,7 +116,9 @@ public class Main {
 		}
 		else
 		{
-			Utility.println(System.err, Utility.GREEN, result.getError());
+			Utility.println(System.err, Utility.GREEN, unitTest.getName() + " TEST " + testNum 
+					+ " OF " + unitTest.getName() + " TESTS." 
+					+ result.getError() );
 		}
 		Utility.println(System.out, Utility.CYAN, TEXT_TEST_FINISHED);
 	}

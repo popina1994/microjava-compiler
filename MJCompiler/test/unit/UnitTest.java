@@ -44,6 +44,7 @@ public abstract class UnitTest {
 	protected static final String LOG4J_CONFIG_NAME = "log4j.xml";
 	protected static final String PATH_LOG4J_CONFIG = PATH_CONFIG + "/" + LOG4J_CONFIG_NAME;
 	private static final int EXIT_CODE_UNIT_TEST_FAILED = -1;
+	private static final String UNIT_TEST_INFO_COLOR = Utility.YELLOW;
 
 	public static final int RUN_ALL_TESTS = -1;
 	
@@ -97,6 +98,10 @@ public abstract class UnitTest {
 	
 	private static UnitTestResult executeCommand(LinkedList<String> cmdAndArgs)
 	{
+		if (cmdAndArgs == null)
+		{
+			return new UnitTestResult(true, UnitTestResult.OK);
+		}
 		ProcessBuilder processBuilder = new ProcessBuilder(cmdAndArgs).inheritIO();
 		Process process;
 		
@@ -105,8 +110,6 @@ public abstract class UnitTest {
 
 			process = processBuilder.start();
 			int errCode = process.waitFor();
-			
-			//System.out.println(output(process.getInputStream()));
 			
 			if (errCode != 0)
 			{
@@ -140,16 +143,32 @@ public abstract class UnitTest {
 		LinkedList<String> listArgs = null;
 		listArgs = argumentsListUnitTestRun(unitTestNum);
 		
-		Utility.println(System.out, Utility.BLUE, "EXECUTING UNIT TEST NUMBER " + unitTestNum); 
-		return executeCommand(listArgs);
+		Utility.println(System.out, UNIT_TEST_INFO_COLOR, "EXECUTING UNIT TEST NUMBER " + unitTestNum 
+				+ " OF " + name + " TESTS"); 
+		UnitTestResult unitTestResult = executeCommand(listArgs);
+		if (!unitTestResult.isSuccessful())
+		{
+			return unitTestResult;
+		}
 		
+		return executeAdditional(unitTestNum);
+		
+	}
+	
+	protected UnitTestResult executeAdditional(int unitTestNum)
+	{
+		return new UnitTestResult(true, UnitTestResult.OK);
 	}
 	
 	public UnitTestResult generateSouorceCodeFromSpec()
 	{
 		LinkedList<String> listArgs = null;
 		listArgs = argumentsListSourceCodeGenerate();
-		Utility.println(System.out, Utility.BLUE, "GENERATING SOURCE CODE " + name);
+		if (null != listArgs)
+		{
+			Utility.println(System.out, UNIT_TEST_INFO_COLOR, "GENERATING SOURCE CODE " + name);
+		}
+		
 		return executeCommand(listArgs);
 	}
 	
@@ -159,7 +178,11 @@ public abstract class UnitTest {
 	{
 		LinkedList<String> listArgs = null;
 		listArgs = argumentsListSourceCodeBuild();
-		Utility.println(System.out, Utility.BLUE, "COMPILING SOURCE CODE " + name);
+		if (null != listArgs)
+		{
+			Utility.println(System.out, UNIT_TEST_INFO_COLOR, "COMPILING SOURCE CODE " + name);
+		}
+		
 		return executeCommand(listArgs);
 	}
 	
@@ -167,10 +190,10 @@ public abstract class UnitTest {
 	{
 		LinkedList<String> listArgs = null;
 		listArgs = argumentsListUnitTestBuild();
-		Utility.println(System.out, Utility.BLUE, "COMPILING SOURCE CODE OF UNIT TEST ENVIROMENT "  + name);
+		Utility.println(System.out, UNIT_TEST_INFO_COLOR, "COMPILING SOURCE CODE OF UNIT TEST ENVIROMENT "  + name);
 		return executeCommand(listArgs);
 	}
-	
+	/*
 	private static String output(InputStream inputStream)
 	{
 		BufferedReader bufferedReader = null;
@@ -198,6 +221,7 @@ public abstract class UnitTest {
 		return stringBuilder.toString();
 		
 	}
+	*/
 	
 	protected abstract LinkedList<String> argumentsListUnitTestRun(int unitTestNum);
 	protected abstract LinkedList<String> argumentsListUnitTestBuild();

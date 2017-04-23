@@ -95,6 +95,10 @@ public class MJParserTest {
 			{
 				System.exit(-1);
 			}
+			else if (!isSyntaxTest && p.semanticError)
+			{
+				System.exit(-1);
+			}
 			
 			//log.info("Print calls" + p.printCallCount);
 			
@@ -114,7 +118,6 @@ public class MJParserTest {
 				log.info("Parsiranje nije uspesno");
 			}
 			*/
-			
 			/*
 			while ((currToken = lexer.next_token()).sym != sym.EOF) {
 				if (currToken != null && currToken.value != null)

@@ -15,9 +15,9 @@ FLAG_RUN_PREV=false
 FLAG_RUN_BUILD=true
 FLAG_TEST_NUM=-1
 JAVA_FLAGS=-t $(FLAG_TYPE) -n $(FLAG_TEST_NUM) -b $(FLAG_RUN_BUILD) -rp $(FLAG_RUN_PREV)
-build:
-	$(JAVAC) -cp $(LIB)\* $(TEST)unit/*.java $(TEST)utility/*.java -d $(BIN)
 run:
 	 $(JAVA) -cp $(BIN)\;$(LIB)* unit.Main $(JAVA_FLAGS)
+build:
+	$(JAVAC) -cp $(LIB)\* $(TEST)unit/*.java $(TEST)utility/*.java -d $(BIN)
 clean:
 	rm -r $(BIN)*

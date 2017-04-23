@@ -261,7 +261,14 @@ parser code {:
 
         public boolean isArrayElement()
         {
-            return isArrayElement;
+            return obj.getKind() == Obj.Elem && isLeftValue;
+        }
+
+        public boolean isArray()
+        {
+            return (isLeftValue &&  (obj.getType().getKind() == Struct.Array) );
+
+
         }
 
         public boolean  IsVar()
@@ -276,8 +283,21 @@ parser code {:
 
         public void generateRightValue()
         {
-
+            if (isArrayElement())
+            {
+                // a i a[i]
+                Code.put(Code.dup_x2);
+                // a[i] a i a[i]
+                Code.put(Code.pop);
+                // a[i] a i
+                Code.put(Code.pop);
+                // a[i] a
+                Code.put(Code.pop);
+                // a[i]
+                setRightValue(true);
+            }
         }
+
     }
 
 
@@ -1216,6 +1236,12 @@ Statement ::=
                     {
                         Code.put(Code.print);
                     }
+
+                    if (expr.isArrayElement())
+                    {
+                        Code.put(Code.pop);
+                        Code.put(Code.pop);
+                    }
                 }
                 else
                 {
@@ -1231,24 +1257,22 @@ Statement ::=
         :}
         ;
 
-// Ovo ne da ces morati da proveris, nego bice sigurno zezancije.
-//
 ElseStatementEpsilon ::=
-            ELSE
-            Statement
+        ELSE
+        Statement
 
-            {:
-                parser.log.debug("Prepoznat ELSE", null);
-            :}
-            |
-            /* epsilon */
-            ;
+        {:
+            parser.log.debug("Prepoznat ELSE", null);
+        :}
+        |
+        /* epsilon */
+        ;
 
 ExprEpsilon ::=
-            Expr
-            |
-            /* epsilon */
-            ;
+        Expr
+        |
+        /* epsilon */
+        ;
 
 
 
@@ -1278,19 +1302,6 @@ CommaConstNumEpsilon ::=
 /******************* Designator Statement *******************/
 /************************************************************/
 
-DesignatorStatementOrAssignOrErrorSemi ::=
-
-            DesignatorStatement SEMI_COLUMN
-            |
-            AssingmentStatement SEMI_COLUMN
-            |
-            SEMI_COLUMN
-            |
-            error SEMI_COLUMN
-            {:
-                  parser.report_error("Uspesan oporavak od greske inicijalizatora u for-u,  SEMI_COLUMN je resio stvar" , null);
-            :}
-            ;
 
 DesignatorStatementOrAssign ::=
 
@@ -1346,6 +1357,7 @@ DesignatorIncOrDec ::=
                     Code.loadConst(1);
                     Code.put(op);
                     Code.store(designator.getObj());
+                    designator.setRightValue(true);
                 }
                 else
                 {
@@ -1391,8 +1403,15 @@ AssingmentStatementOrErrorSemi ::=
             {
                 RESULT = dest.setSemanticError(true);
             }
-            // TO DO add checks for array and class.
-            //
+            else
+            {
+                if (dest.isArrayElement() && op == OP_ASSIGN_CODE)
+                {
+                    // a i a[i]
+                    Code.put(Code.pop);
+                    // a i
+                }
+            }
 
         :}
         AssignOpExpOrErrorSemi : expr
@@ -1402,6 +1421,19 @@ AssingmentStatementOrErrorSemi ::=
             if (!dest.isSemanticError() && dest.isLeftValue() &&
                 !expr.isSemanticError())
             {
+                if (expr.isArrayElement())
+                {
+                        // a i a[i]
+                    Code.put(Code.dup_x2);
+                    // a[i] a i a[i]
+                    Code.put(Code.pop);
+                    // a[i] a i
+                    Code.put(Code.pop);
+                    // a[i] a
+                    Code.put(Code.pop);
+                    // a[i]
+                }
+
                 if (op != OP_ASSIGN_CODE)
                 {
                     // Vrednost na steku nije duplirana jer
@@ -1409,8 +1441,24 @@ AssingmentStatementOrErrorSemi ::=
                     // Nista za dalje vrednosti.
                     Code.put(op);
                 }
+                else
+                {
+                    if (dest.isArrayElement())
+                    {
+                        /*
+                        // a i a[i] nesto
+                        Code.put(Code.dup_x1);
+                        // a i nesto a[i] nesto
+                        Code.put(Code.pop);
+                        // a i nesto a[i]
+                        Code.put(Code.pop);
+                        // a i nesto
+                        */
+                    }
+                }
                 Code.store(dest.getObj());
-                if (op == OP_ASSIGN_CODE)
+                if ( (op == OP_ASSIGN_CODE)
+                    && !dest.isArrayElement())
                 {
                     Code.put(Code.pop);
                 }
@@ -1515,6 +1563,7 @@ Expr ::=
             if (isNegative && term.getObj().getType().equals(Tab.intType))
             {
                 Code.put(Code.neg);
+                term.generateRightValue();
                 RESULT = term;
             }
             else if (!isNegative)
@@ -1541,7 +1590,9 @@ OpSubEpsilon ::=
         ;
 
 AddopRightTerm ::=
-        AddopLeftTerm:leftTerm AddopRight:op AddopRightTerm:rightTerm
+        AddopLeftTerm:leftTerm AddopRight:op
+
+        AddopRightTerm:rightTerm
         {:
         // Treba dodati provere za polja i sve ostale gluposti
         //
@@ -1551,11 +1602,24 @@ AddopRightTerm ::=
         && !leftTerm.isSemanticError()
         && !rightTerm.isSemanticError())
         {
+            rightTerm.generateRightValue();
             Code.put(op);
-            Code.put(Code.dup);
+            if (leftTerm.isArrayElement())
+            {
+                // a i sum
+                Code.put(Code.dup_x2);
+                // sum a i sum
+            }
+            else
+            {
+                Code.put(Code.dup);
+            }
+            // sum
             Code.store(leftTerm.getObj());
             // TO DO : ARray class and other shit.
             //
+
+            leftTerm.setRightValue(true);
             RESULT = leftTerm;
         }
         else
@@ -1576,7 +1640,9 @@ AddopLeftTerm ::=
         if (leftTerm.getObj().getType().equals(Tab.intType)
         && (rightTerm.getObj().getType().equals(Tab.intType)))
         {
+            rightTerm.generateRightValue();
             Code.put(op);
+            leftTerm.generateRightValue();
             RESULT = new ObjResultWrapper(new Obj(Obj.Con,"",Tab.intType), true);
         }
         else
@@ -1585,24 +1651,25 @@ AddopLeftTerm ::=
         }
         :}
         |
-        Term:type
+        Term:term
         {:
-            RESULT = type;
+            RESULT = term;
         :}
         ;
 
 /**********************   Term       *****************************/
 /*****************************************************************/
 Term ::=
-            MullopRightFactor:type
+            MullopRightFactor:rightFactor
             {:
-                RESULT = type;
+                RESULT = rightFactor;
             :}
             ;
 
 MullopRightFactor ::=
         MulopLeftFactor:leftFactor
         MulopRight:op
+        // a i expr -> expr a i expr
         MullopRightFactor:rightFactor
         {:
             // Treba dodati provere za polja i sve ostale gluposti
@@ -1613,9 +1680,19 @@ MullopRightFactor ::=
             && !leftFactor.isSemanticError()
             && !rightFactor.isSemanticError())
             {
+                rightFactor.generateRightValue();
                 Code.put(op);
-                Code.put(Code.dup);
+                if (leftFactor.isArrayElement())
+                {
+                    Code.put(Code.dup_x2);
+                }
+                else
+                {
+                    Code.put(Code.dup);
+                }
+
                 Code.store(leftFactor.getObj());
+                leftFactor.setRightValue(true);
                 RESULT = leftFactor;
             }
             else
@@ -1639,8 +1716,9 @@ MulopLeftFactor ::=
             if (leftFactor.getObj().getType().equals(Tab.intType)
             && (rightFactor.getObj().getType().equals(Tab.intType)))
             {
-
+                rightFactor.generateRightValue();
                 Code.put(op);
+                leftFactor.generateRightValue();
                 RESULT = new ObjResultWrapper(new Obj(Obj.Con,"",Tab.intType), true);
             }
             else
@@ -1651,6 +1729,7 @@ MulopLeftFactor ::=
         |
         Factor:factor
         {:
+            // Do ovde dodje x : i : x[i]
             RESULT = factor;
         :}
         ;
@@ -1735,6 +1814,9 @@ Designator ::=
             IDENT:name
             {:
                 Obj obj = Tab.find(name);
+
+                curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
+
                 curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
                 // TODO: add checks for types...
                 //
@@ -1805,17 +1887,25 @@ DotIdentOrBracketExpr ::=
         |
         BRACKET_LEFT Expr BRACKET_RIGHT
         {:
-            Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType();
-            if ( !curObjWrappFieldOrElem.isSemanticError()
-                && (curArrayDotType != null)
-                && curArrayDotType.equals(Struct.Array)
-                && !curArrayDotType.getElemType().equals(Tab.noType))
-                {
-                    Obj obj = new Obj(Obj.Elem, "", curArrayDotType.getElemType());
-                    curObjWrappFieldOrElem.setObj(obj);
-                    //Code.load(obj);
-                    RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
-                }
+            if (curObjWrappFieldOrElem.isArray())
+            {
+                Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
+                if ( !curObjWrappFieldOrElem.isSemanticError()
+                    && !curArrayDotType.equals(Tab.noType))
+                    {
+                        // Add check for field..
+                        //
+                        Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
+                        curObjWrappFieldOrElem.setObj(obj);
+                        Code.put(Code.dup2);
+                        Code.load(obj);
+                        RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
+                    }
+                    else
+                    {
+                        RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                    }
+            }
             else
             {
                 RESULT = curObjWrappFieldOrElem.setSemanticError(true);

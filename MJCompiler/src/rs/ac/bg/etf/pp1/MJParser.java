@@ -1727,8 +1727,9 @@ class CUP$MJParser$actions {
 		int charStrright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String charStr = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            Character c = charStr.charAt(1);
-            RESULT = new Obj(Obj.Con, "", Tab.charType, Character.getNumericValue(c.charValue()), charStrleft);
+            char c = charStr.charAt(1);
+            RESULT = new Obj(Obj.Con, "", Tab.charType,
+            c, charStrleft);
 
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ConstChar",11, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);

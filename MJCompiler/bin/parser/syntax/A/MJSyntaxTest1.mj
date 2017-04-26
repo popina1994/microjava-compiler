@@ -9,27 +9,28 @@ bool eww[];
 char cLocal;
 char nizC[];
 int nizI[];
-
+int prom2;
 {
 	void main()
 	int t; {
-		//nizI = new int[3];
-		//nizC = new char[4];
-		//cLocal = 'a';
+		nizI = new int[3];
+		nizC = new char[4];
+		cLocal = 'a';
 		t = 2;
 		prom = 0;
 		t +=  t += t += 1;
 		prom += 1;
-		//prom2 = 2;
-		//prom ++;
-		//prom2 --;
-		//read(cLocal);
-		//print(cLocal);
+		prom2 = 2;
+		prom ++;
+		prom2 --;
+		read(cLocal);
+		print(cLocal);
+		print(' ');
 		print(prom);
+		print(' ');
 		print(t);
-		//print(prom2, 0);
-		//niz = new int[5];
-		//niz[0] = 1;
+		print(' ');
+		print(-prom2, 0);
 
 
 	}

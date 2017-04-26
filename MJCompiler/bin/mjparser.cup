@@ -281,6 +281,12 @@ parser code {:
         {
         }
 
+        public boolean loadable()
+        {
+            int kind = obj.getKind();
+            return (kind == Obj.Con) || (kind == Obj.Var) || (kind == Obj.Fld) || (kind == Obj.Elem);
+        }
+
         public void generateRightValue()
         {
             if (isArrayElement())
@@ -500,6 +506,7 @@ action code {:
     Struct curFormType = null;
     Obj curObjFieldOrElem = null;
     ObjResultWrapper curObjWrappFieldOrElem = null;
+    LinkedList<ObjResultWrapper> listCurObjWrapperFieldOrElem = new LinkedList<ObjResultWrapper>();
 
     boolean globalVar = false;
     boolean localVar = false;
@@ -852,7 +859,7 @@ VarExpr ::=
             varObj = Tab.insert(Obj.Var, nameOfVar, type);
             if (formVar)
             {
-                varObj.setAdr(Tab.currentScope().getnVars());
+                varObj.setAdr(Tab.currentScope().getnVars() - 1);
             }
         }
 
@@ -967,8 +974,6 @@ MethodDecl ::=
 
             }
 
-            // Kopiraju sa steka potreban broj parametara funkcijski stek, pre toga alociraj potreban prostor.
-            //
             Code.put(Code.enter);
             Code.put(TabExt.curMethod.getLevel());
             Code.put(Tab.currentScope().getnVars());
@@ -980,10 +985,19 @@ MethodDecl ::=
         {:
             // Dealocira se stek.
             //
-            Code.put(Code.exit);
-            // TODO : Povratna vrednost se menja.
-            //
-            Code.put(Code.return_);
+            if (retType == Tab.noType)
+            {
+                Code.put(Code.exit);
+                Code.put(Code.return_);
+            }
+            else
+            {
+                // Error in case of no return.
+                //
+                Code.put(Code.trap);
+                Code.put(1);
+            }
+
             Tab.closeScope();
             parser.log.debug("Prepoznat METHOD", null);
         :}
@@ -1190,6 +1204,12 @@ Statement ::=
         |
         RETURN ExprEpsilon SEMI_COLUMN
         {:
+            // TODO : return check semantic.
+            // Should exist, are types ok...
+            //
+            Code.put(Code.exit);
+            Code.put(Code.return_);
+
             parser.log.debug("Prepoznat RETURN", null);
         :}
         |
@@ -1350,9 +1370,12 @@ DesignatorStatement ::=
         |
         DesignatorFuncCall:funcCall
         {:
+            if (funcCall.getObj().getType() != Tab.noType)
+            {
+                Code.put(Code.pop);
+            }
             RESULT = funcCall;
         :}
-
         ;
 
 DesignatorIncOrDec ::=
@@ -1386,8 +1409,16 @@ IncOrDec ::=
     ;
 
 DesignatorFuncCall ::=
-        Designator
+        Designator:func
         PAR_LEFT ActParsEpsilon PAR_RIGHT
+        {:
+            Code.put(Code.call);
+            // Because Code.call is put then pc  = pc + 1.
+            //
+            int adr = func.getObj().getAdr() - Code.pc + 1;
+            Code.put2(adr);
+            RESULT = func;
+        :}
         ;
 
 ActParsEpsilon ::=
@@ -1745,9 +1776,14 @@ MulopLeftFactor ::=
 /*****************************************************************/
 
 Factor ::=
-        Designator:src ParActParsEpsilonEpsilon
+        DesignatorFuncCall:func
         {:
-            RESULT = src;
+            RESULT = func;
+        :}
+        |
+        Designator:designator
+        {:
+            RESULT = designator;
         :}
         |
         ConstValue:constValue
@@ -1823,15 +1859,12 @@ Designator ::=
                 Obj obj = Tab.find(name);
 
                 curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
-
-                curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
-                // TODO: add checks for types...
-                //
+                listCurObjWrapperFieldOrElem.addLast(curObjWrappFieldOrElem);
                 if (obj == Tab.noObj)
                 {
                     curObjWrappFieldOrElem.setSemanticError(true);
                 }
-                else
+                else if (curObjWrappFieldOrElem.loadable())
                 {
                     Code.load(curObjWrappFieldOrElem.getObj());
                 }
@@ -1846,14 +1879,19 @@ Designator ::=
                     ObjResultWrapper objWrap = new ObjResultWrapper(curObjWrappFieldOrElem.getObj(), curObjWrappFieldOrElem.getObj().getKind() == Obj.Con);
                     RESULT = objWrap;
                 }
-                else if ( (!objWrapper.isSemanticError())
+                else if ( (objWrapper != null) && (!objWrapper.isSemanticError())
                 && (!objWrapper.getObj().equals(Tab.noObj)) )
                 {
                     RESULT = objWrapper;
                 }
                 else
                 {
-                    RESULT = objWrapper.setSemanticError(true);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                listCurObjWrapperFieldOrElem.removeLast();
+                if (listCurObjWrapperFieldOrElem.size() != 0)
+                {
+                    curObjWrappFieldOrElem = listCurObjWrapperFieldOrElem.getLast();
                 }
 
             :}

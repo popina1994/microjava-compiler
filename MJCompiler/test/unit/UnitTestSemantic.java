@@ -4,8 +4,10 @@ import java.util.LinkedList;
 
 public class UnitTestSemantic extends UnitTestParser {
 	protected static  String [] TEST_MICRO_JAVA_PARSER_SEMANTIC = new String[]{	
-			"MJSemanticTest1.mj",
-			"MJSemanticTest2.mj"
+			"A/MJSemanticTest1.mj",
+			"A/MJSemanticTest2.mj",
+			"A/MJSemanticTest3.mj",
+			"A/MJSemanticTest4.mj"
 	};
 	private static final String PATH_TEST_SEMANTIC_RUN = PATH_TEST + "/parser/semantic";
 	

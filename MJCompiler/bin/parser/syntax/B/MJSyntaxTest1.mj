@@ -1,0 +1,36 @@
+program Test
+
+{
+
+    void test(int a, int b)
+    {
+            print(a);
+            return;
+            print(b);
+
+    }
+
+    char test2(char c)
+    {
+        return c;
+    }
+
+	void main()
+	int t, u;
+    char m; {
+        {
+        t = 1;
+        u = 2;
+		test(t, u);
+        test2('b');
+        //print('v');
+        print('r');
+        //t = test2('a');
+        m = test2('a');
+        print(test2('b'));
+        t = (t);
+        }
+
+	}
+
+}

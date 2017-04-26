@@ -19,11 +19,11 @@ int nizI[];
 		t = nizI[1];
 		print(t);
 
-		//t = nizI[1] + 1;
-		//print(t);
+		t = nizI[1] + 1;
+		print(t);
 
-		//t = nizI[1] + nizI[1] + nizI[1];
-		//print(t);
+		t = nizI[1] + nizI[1] + nizI[1];
+		print(t);
 
 		t = 2 * nizI[1];
 		print(t);

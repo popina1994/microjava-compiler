@@ -161,7 +161,7 @@ parser code {:
         boolean isVar;
         boolean isField;
         boolean semanticError = false;
-        boolean isArrayElement;
+        int relOp;
 
         public ObjResultWrapper(Obj obj, boolean isRightValue) {
             this.obj = obj;
@@ -203,57 +203,6 @@ parser code {:
             return this;
         }
 
-        public void setIsVar(boolean isVar)
-        {
-            this.isVar = isVar;
-            if (isVar)
-            {
-                isLeftValue = true;
-                isRightValue = false;
-                isField = false;
-                isArrayElement =false;
-            }
-            else
-            {
-                isLeftValue = false;
-                isRightValue = true;
-            }
-        }
-
-        public void setIsArrayElement(boolean isArrayElement)
-        {
-            this.isArrayElement = isArrayElement;
-            if (isArrayElement)
-            {
-                isLeftValue = true;
-                isRightValue = false;
-                isVar = false;
-                isField = false;
-            }
-            else
-            {
-                isLeftValue = false;
-                isRightValue = true;
-            }
-        }
-
-        public void setIsField(boolean isField)
-        {
-            this.isField = isField;
-            if (isField)
-            {
-                isLeftValue = true;
-                isRightValue = false;
-                isArrayElement = false;
-                isVar = false;
-            }
-            else
-            {
-                isLeftValue = false;
-                isRightValue = true;
-            }
-        }
-
         public boolean  isField()
         {
             return isField;
@@ -267,13 +216,6 @@ parser code {:
         public boolean isArray()
         {
             return (isLeftValue &&  (obj.getType().getKind() == Struct.Array) );
-
-
-        }
-
-        public boolean  IsVar()
-        {
-            return isVar;
         }
 
 
@@ -302,6 +244,16 @@ parser code {:
                 // a[i]
                 setRightValue(true);
             }
+        }
+
+        public void setRelOp(int relOp)
+        {
+            this.relOp = relOp;
+        }
+
+        public int getRelOp()
+        {
+            return relOp;
         }
 
     }
@@ -507,6 +459,8 @@ action code {:
     Obj curObjFieldOrElem = null;
     ObjResultWrapper curObjWrappFieldOrElem = null;
     LinkedList<ObjResultWrapper> listCurObjWrapperFieldOrElem = new LinkedList<ObjResultWrapper>();
+    LinkedList<Integer> listAdrConditionTrue = new LinkedList<Integer>();
+    LinkedList<Integer> listAdrConditionFalse = new LinkedList<Integer>();
 
     boolean globalVar = false;
     boolean localVar = false;
@@ -564,9 +518,12 @@ non terminal ObjResultWrapper DesignatorFuncCall;
 non terminal Integer IncOrDec;
 non terminal ObjResultWrapper ExpOrErrorSemi;
 non terminal ObjResultWrapper AssignOpExpOrErrorSemi;
-non terminal ForCondition, OpOrCondTermList;
-non terminal CondTerm, OpAndCondFactList;
-non terminal CondFact, RelopExprEpsilon;
+non terminal ForCondition;
+non terminal ObjResultWrapper OpOrCondTermList;
+non terminal ObjResultWrapper CondTerm;
+non terminal ObjResultWrapper OpAndCondFactList;
+non terminal ObjResultWrapper CondFact;
+non terminal ObjResultWrapper RelOpExprOrEpsilon;
 non terminal ObjResultWrapper Expr;
 non terminal Boolean OpSubEpsilon;
 non terminal ObjResultWrapper AddopRightTerm;
@@ -582,7 +539,7 @@ non terminal ObjResultWrapper DotIdentOrBracketExprListEpsilon;
 non terminal ObjResultWrapper DotIdentOrBracketExprList;
 non terminal ObjResultWrapper DotIdentOrBracketExpr;
 non terminal Integer Assignop;
-non terminal Relop;
+non terminal Integer Relop;
 non terminal Integer AddopLeft;
 non terminal Integer AddopRight;
 non terminal Integer MulopLeft;
@@ -1166,8 +1123,29 @@ Statement ::=
             parser.log.debug("Prepoznata STATEMENT", null);
         :}
         |
-        IF PAR_LEFT IfConditionParRight Statement ElseStatementEpsilon
+        // TODO : add check for type of expression.
+        //
+        IF PAR_LEFT IfConditionParRight
         {:
+            // FALSE.
+            //
+            Code.put(Code.const_n);
+            Code.putFalseJump(Code.ne, 0);
+            int adrConditionFalse = Code.pc - 2;
+            listAdrConditionFalse.addLast(adrConditionFalse);
+        :}
+        Statement
+        {:
+
+            Code.putJump(0);
+            Code.fixup(listAdrConditionFalse.removeLast());
+            int adrConditionTrue = Code.pc - 2;
+            listAdrConditionTrue.addLast(adrConditionTrue);
+        :}
+        ElseStatementEpsilon
+        {:
+
+            Code.fixup(listAdrConditionTrue.removeLast());
             parser.log.debug("Prepoznat IF", null);
         :}
         |
@@ -1555,7 +1533,10 @@ ForCondition ::=
             OpOrCondTermList
             ;
 IfConditionParRight ::=
-            OpOrCondTermList PAR_RIGHT
+            OpOrCondTermList:cond PAR_RIGHT
+            {:
+                RESULT = cond;
+            :}
             |
             error PAR_RIGHT
             {:
@@ -1564,6 +1545,11 @@ IfConditionParRight ::=
             ;
 OpOrCondTermList ::=
         OpOrCondTermList OP_OR CondTerm
+        // TODO : add checks
+        //
+        {:
+            Code.put(Code.add);
+        :}
         |
         CondTerm
         ;
@@ -1574,7 +1560,12 @@ CondTerm ::=
         OpAndCondFactList
         ;
 OpAndCondFactList ::=
-        OpAndCondFactList OP_AND CondFact
+        OpAndCondFactList:leftFact OP_AND CondFact:rightFact
+        // TODO add check if is boolType
+        //
+        {:
+            Code.put(Code.mul);
+        :}
         |
         CondFact
         ;
@@ -1582,13 +1573,56 @@ OpAndCondFactList ::=
 /******************* CondFact   *****************************/
 /************************************************************/
 CondFact ::=
-            Expr RelopExprEpsilon
-            ;
-RelopExprEpsilon ::=
-        Relop
-        Expr
+        Expr:expr
+        {:
+            expr.generateRightValue();
+        :}
+        RelOpExprOrEpsilon:compareRight
+        {:
+            //
+
+            if (null == compareRight)
+            {
+                // TODO : add checki if is boolean
+                //
+                //RESULT = expr;
+            }
+            else
+            {
+                // JCONDFALSE.
+                //
+                Code.putFalseJump(compareRight.getRelOp(), 0);
+                int adrFromWhereToJumpFalse = Code.pc - 2;
+                // TRUE.
+                //
+                Code.put(Code.const_1);
+                Code.putJump(0);
+                int adrFromWhereToJumpTrue = Code.pc - 2;
+
+                Code.fixup(adrFromWhereToJumpFalse);
+                // False.
+                //
+                Code.put(Code.const_n);
+                // JMP over this
+                Code.fixup(adrFromWhereToJumpTrue);
+            }
+
+            RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", TabExt.boolType), true);
+        :}
+        ;
+RelOpExprOrEpsilon ::=
+        Relop:relOp
+        Expr:expr
+        {:
+            expr.generateRightValue();
+            expr.setRelOp(relOp);
+            RESULT = expr;
+        :}
         |
         /* epsilon */
+        {:
+            RESULT = null;
+        :}
         ;
 
 
@@ -1987,16 +2021,34 @@ Assignop ::=
 /*****************************************************************/
 Relop ::=
             OP_EQ
+            {:
+                RESULT = Code.eq;
+            :}
             |
             OP_NOT_EQ
+            {:
+                RESULT = Code.ne;
+            :}
             |
             OP_GTE
+            {:
+                RESULT = Code.ge;
+            :}
             |
             OP_GREAT
+            {:
+                RESULT = Code.gt;
+            :}
             |
             OP_LESS
+            {:
+                RESULT = Code.lt;
+            :}
             |
             OP_LTE
+            {:
+                RESULT = Code.le;
+            :}
             ;
 
 

@@ -1,0 +1,38 @@
+// Tabela simbola testiranje
+program Test
+const int m = 1, m2 = 3;
+const char c = 'c', c1 ='a';
+const bool t = true, f = false;
+int prom;
+
+bool eww[];
+char cLocal;
+char nizC[];
+int nizI[];
+int prom2;
+{
+	void main()
+	int t; {
+		nizI = new int[3];
+		nizC = new char[4];
+		cLocal = 'a';
+		t = 2;
+		prom = 0;
+		t +=  t += t += 1;
+		prom += 1;
+		prom2 = 2;
+		prom ++;
+		prom2 --;
+		read(cLocal);
+		print(cLocal);
+		print(' ');
+		print(prom);
+		print(' ');
+		print(t);
+		print(' ');
+		print(-prom2, 0);
+
+
+	}
+	int main2(int t, int b, int c) {}
+}

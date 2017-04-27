@@ -1,0 +1,25 @@
+//Test 303
+
+program test_303
+
+const int cinilac = 4, delilac = 3;
+
+
+int zapreminaK, zapreminaS;
+int tezinaK, tezinaS;
+{
+
+	int f(int a){
+	a++;
+	return 0;
+	}
+	
+	void main() int a;
+	{
+	   a=1;
+	   f(a);
+	   print(a);
+		
+	}
+}
+

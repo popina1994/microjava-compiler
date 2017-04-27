@@ -444,6 +444,29 @@ parser code {:
     }
 
 
+    void pushOnCodeStack(LinkedList<LinkedList<Byte>> codeStack, int beginAddress)
+    {
+        // Oprezno, mozda je jos neophodno azurirati!!!
+        //
+        LinkedList<Byte> listOfCode = new LinkedList<Byte>();
+
+        for (int idx = beginAddress; idx < Code.pc; idx ++)
+        {
+            listOfCode.addLast(Code.buf[idx]);
+        }
+        codeStack.addLast(listOfCode);
+        Code.pc = beginAddress;
+    }
+
+    void popFromCodeStack(LinkedList<LinkedList<Byte>> codeStack)
+    {
+        LinkedList<Byte> listOfCode = codeStack.removeLast();
+        for (int idx = 0; idx < listOfCode.size(); idx ++)
+        {
+            Code.put(listOfCode.get(idx));
+        }
+    }
+
 
 :}
 
@@ -459,13 +482,21 @@ action code {:
     Obj curObjFieldOrElem = null;
     ObjResultWrapper curObjWrappFieldOrElem = null;
     LinkedList<ObjResultWrapper> listCurObjWrapperFieldOrElem = new LinkedList<ObjResultWrapper>();
-    LinkedList<Integer> listAdrConditionTrue = new LinkedList<Integer>();
-    LinkedList<Integer> listAdrConditionFalse = new LinkedList<Integer>();
+    LinkedList<Integer> listAdrIfConditionTrue = new LinkedList<Integer>();
+    LinkedList<Integer> listAdrIfConditionFalse = new LinkedList<Integer>();
+
+    LinkedList<Integer> listAdrForConditionFalse  = new LinkedList<Integer>();
+    LinkedList<Integer> listAdrForCondition = new LinkedList<Integer>();
+    LinkedList<LinkedList<Byte>> listSavedCode = new LinkedList<LinkedList<Byte>>();
+    Integer forLastDesigantorBeginAddress = null;
+
 
     boolean globalVar = false;
     boolean localVar = false;
     boolean formVar = false;
     int formParCnt = 0;
+
+
 
 :}
 
@@ -1132,25 +1163,57 @@ Statement ::=
             Code.put(Code.const_n);
             Code.putFalseJump(Code.ne, 0);
             int adrConditionFalse = Code.pc - 2;
-            listAdrConditionFalse.addLast(adrConditionFalse);
+            listAdrIfConditionFalse.addLast(adrConditionFalse);
         :}
         Statement
         {:
 
             Code.putJump(0);
-            Code.fixup(listAdrConditionFalse.removeLast());
+            Code.fixup(listAdrIfConditionFalse.removeLast());
             int adrConditionTrue = Code.pc - 2;
-            listAdrConditionTrue.addLast(adrConditionTrue);
+            listAdrIfConditionTrue.addLast(adrConditionTrue);
         :}
         ElseStatementEpsilon
         {:
 
-            Code.fixup(listAdrConditionTrue.removeLast());
+            Code.fixup(listAdrIfConditionTrue.removeLast());
             parser.log.debug("Prepoznat IF", null);
         :}
         |
-        FOR PAR_LEFT DesignatorStatementOrAssign SEMI_COLUMN   ForConditionSemi  DesignatorStatementOrAssignOrErrorParRight
-            Statement
+        FOR PAR_LEFT DesignatorStatementOrAssign SEMI_COLUMN
+        {:
+            listAdrForCondition.addLast(Code.pc);
+        :}
+        ForConditionSemi
+        {:
+            Code.put(Code.const_n);
+            Code.putFalseJump(Code.ne, 0);
+            int adrConditionFalse = Code.pc - 2;
+            listAdrForConditionFalse.addLast(adrConditionFalse);
+
+
+            forLastDesigantorBeginAddress = Code.pc;
+        :}
+        DesignatorStatementOrAssignOrErrorParRight
+        {:
+            pushOnCodeStack(listSavedCode, forLastDesigantorBeginAddress);
+        :}
+
+
+
+        Statement
+        {:
+            // Azuriraj adresu na koju skace svakog continuea (to mora da bude neki stek lista continue-a)
+            popFromCodeStack(listSavedCode);
+
+            int adrCondition = listAdrForCondition.removeLast();
+            Code.putJump(adrCondition);
+
+            // Azuriraj adresu na koju skace svaki break (jer se iskace iz ciklusa)
+            // Azurira adresu kad nije uspesna provera.
+            //
+            Code.fixup(listAdrForConditionFalse.removeLast());
+        :}
         |
         FOR error SEMI_COLUMN ForCondition SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
         |
@@ -1406,9 +1469,77 @@ ActParsEpsilon ::=
         ;
 
 AssingmentStatement ::=
-        Designator:dst
+        Designator:dest
         Assignop:op
+        {:
+            if (dest.isSemanticError() || !dest.isLeftValue())
+            {
+                RESULT = dest.setSemanticError(true);
+            }
+            else
+            {
+                if (dest.isArrayElement() && op == OP_ASSIGN_CODE)
+                {
+                    // a i a[i]
+                    Code.put(Code.pop);
+                    // a i
+                }
+            }
+        :}
         Expr : expr
+        {:
+            // Check error.
+            //
+            if (!dest.isSemanticError() && dest.isLeftValue() &&
+                !expr.isSemanticError())
+            {
+                if (expr.isArrayElement())
+                {
+                        // a i a[i]
+                    Code.put(Code.dup_x2);
+                    // a[i] a i a[i]
+                    Code.put(Code.pop);
+                    // a[i] a i
+                    Code.put(Code.pop);
+                    // a[i] a
+                    Code.put(Code.pop);
+                    // a[i]
+                }
+
+                if (op != OP_ASSIGN_CODE)
+                {
+                    // Vrednost na steku nije duplirana jer
+                    // treba samo da se koristi za izracunavanje
+                    // Nista za dalje vrednosti.
+                    Code.put(op);
+                }
+                else
+                {
+                    if (dest.isArrayElement())
+                    {
+                        /*
+                        // a i a[i] nesto
+                        Code.put(Code.dup_x1);
+                        // a i nesto a[i] nesto
+                        Code.put(Code.pop);
+                        // a i nesto a[i]
+                        Code.put(Code.pop);
+                        // a i nesto
+                        */
+                    }
+                }
+                Code.store(dest.getObj());
+                if ( (op == OP_ASSIGN_CODE)
+                    && !dest.isArrayElement())
+                {
+                    Code.put(Code.pop);
+                }
+            }
+            else
+            {
+                RESULT = dest.setSemanticError(true);
+            }
+        :}
         ;
 
 AssingmentStatementOrErrorSemi ::=

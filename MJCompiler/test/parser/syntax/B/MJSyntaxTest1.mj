@@ -38,9 +38,16 @@ bool Boolean;
     }
 
 	void main()
-	int t, u;
+	int t, u, i, j;
     char m; {
         {
+
+        for (i = 0; i < 3; i ++)
+        {
+            print('n');
+            for (j = 0; j < 2; j ++)
+                print('a');
+        }
         Boolean = true;
         print(Boolean);
         if (Boolean)

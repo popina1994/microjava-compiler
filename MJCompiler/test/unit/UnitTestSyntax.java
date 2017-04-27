@@ -31,7 +31,7 @@ public class UnitTestSyntax extends UnitTestParser {
 		listArgs.addLast(CLASS_PATH);
 		listArgs.addLast(PATH_TEST_UNIT_PROGRAM);
 		listArgs.addLast(TEST_MICRO_JAVA_PARSER_SYNTAX[unitTestNum]);
-		listArgs.add("true"/*isSyntax*/);
+		listArgs.add("1"/*isSyntax*/);
 		return listArgs;
 
 	}

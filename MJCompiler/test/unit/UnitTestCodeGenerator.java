@@ -6,22 +6,31 @@ public class UnitTestCodeGenerator extends UnitTest {
 	
 	private static final String PATH_TEST_UNIT_PROGRAM = PATH_PROJECT_PACKAGE + 
 														"/MJCodeGeneratorTest";
+	private static final String PACKAGE_CODE_GENERATOR_RUN = "rs.etf.pp1.mj.runtime.Run";
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_INPUT = new String[]
 			{
-					"MJCodeGenerator1.mj",
-					"MJCodeGenerator2.mj"
+					"A/Input/MJCodeGenerator1.mj"
 			};
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT = new String[]
 			{
-					"MJCodeGenerator1.mj",
-					"MJCodeGenerator2.mj"
+					"A/Output/MJCodeGenerator1"
 			};
 	
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_TEST = new String[]
 			{
-					"MJCodeGenerator1.mj",
-					"MJCodeGenerator2.mj"
+					"A/Output/MJCodeGenerator1.test"
 			};
+	
+	private static final String PATH_TEST_CODE_GENERATOR_RUN = PATH_TEST + "/generator";
+	
+	static {
+		addPath(PATH_TEST_CODE_GENERATOR_RUN, TEST_MICRO_JAVA_CODE_GENERATOR_INPUT);
+		addPath(PATH_TEST_CODE_GENERATOR_RUN, TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT);
+		addPath(PATH_TEST_CODE_GENERATOR_RUN, TEST_MICRO_JAVA_CODE_GENERATOR_TEST);
+	}
+	
+	public static final String EXT_OBJECT = ".obj";
+	public static final String EXT_OUTPUT = ".out";
 	
 	public UnitTestCodeGenerator(String name) {
 		super(name);
@@ -34,9 +43,27 @@ public class UnitTestCodeGenerator extends UnitTest {
 		listArgs.addLast(PATH_JAVA_EXE);
 		listArgs.addLast(FLAG_JAVA_RUN_NOT_MAIN);
 		listArgs.addLast(CLASS_PATH);
-		listArgs.addLast(PATH_TEST_UNIT_PROGRAM);
+		listArgs.addLast(UnitTestParser.PATH_TEST_UNIT_PROGRAM);
 		listArgs.addLast(TEST_MICRO_JAVA_CODE_GENERATOR_INPUT[unitTestNum]);
-		listArgs.add("true"/*isSyntax*/);
+		listArgs.add("3"/*syntax and semantic*/);
+		listArgs.add("false"/*debug*/);
+		listArgs.addLast(TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT[unitTestNum] + EXT_OBJECT);
+		return listArgs;
+	}
+	
+	@Override
+	protected LinkedList<String> argumentsListAdditionalUnitTest(int unitTestNum)
+	{
+		LinkedList<String> listArgs = new LinkedList<String>();
+		listArgs.addLast(PATH_JAVA_EXE);
+		listArgs.addLast(FLAG_JAVA_RUN_NOT_MAIN);
+		listArgs.addLast(CLASS_PATH);
+		listArgs.addLast(PACKAGE_CODE_GENERATOR_RUN);
+		listArgs.addLast(TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT[unitTestNum] + EXT_OBJECT);
+		// Because redirecting to some output is not supported in Code.run.
+		//
+		listArgs.addLast(TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT[unitTestNum] + EXT_OUTPUT);
+		
 		return listArgs;
 	}
 
@@ -53,7 +80,7 @@ public class UnitTestCodeGenerator extends UnitTest {
 		
 		// Where to store built java files.
 		//
-		listArgs.addLast(FLAG_JAVA_COMPILE_OUTPUT_DIRECTORY);
+		listArgs.addLast(FLAG_JAVA_COMPILE_OUTPUT_DIRECTORY);	
 		listArgs.addLast(PATH_BIN);
 		return listArgs;
 	}

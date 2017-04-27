@@ -1195,6 +1195,15 @@ public class MJParser extends java_cup.runtime.lr_parser {
         }
     }
 
+    void updateAdresses(LinkedList<LinkedList<Integer>> list)
+    {
+        LinkedList<Integer> listOfJumpAdresses = list.removeLast();
+
+        for (int idx = 0; idx < listOfJumpAdresses.size(); idx ++)
+        {
+            Code.fixup(listOfJumpAdresses.get(idx));
+        }
+    }
 
 
 
@@ -1220,6 +1229,8 @@ class CUP$MJParser$actions {
     LinkedList<Integer> listAdrForConditionFalse  = new LinkedList<Integer>();
     LinkedList<Integer> listAdrForCondition = new LinkedList<Integer>();
     LinkedList<LinkedList<Byte>> listSavedCode = new LinkedList<LinkedList<Byte>>();
+    LinkedList<LinkedList<Integer>> listOfListOfBreaksInFor = new LinkedList<LinkedList<Integer>>();
+    LinkedList<LinkedList<Integer>> listOfListOfContinuesInFor = new LinkedList<LinkedList<Integer>>();
     Integer forLastDesigantorBeginAddress = null;
 
 
@@ -2555,6 +2566,8 @@ class CUP$MJParser$actions {
               Object RESULT =(Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 
             pushOnCodeStack(listSavedCode, forLastDesigantorBeginAddress);
+            listOfListOfContinuesInFor.addLast(new LinkedList<Integer>());
+            listOfListOfBreaksInFor.addLast(new LinkedList<Integer>());
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$16",110, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -2567,15 +2580,13 @@ class CUP$MJParser$actions {
               // propagate RESULT from NT$16
                 RESULT = (Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		
-            // Azuriraj adresu na koju skace svakog continuea (to mora da bude neki stek lista continue-a)
+            updateAdresses(listOfListOfContinuesInFor);
             popFromCodeStack(listSavedCode);
 
             int adrCondition = listAdrForCondition.removeLast();
             Code.putJump(adrCondition);
 
-            // Azuriraj adresu na koju skace svaki break (jer se iskace iz ciklusa)
-            // Azurira adresu kad nije uspesna provera.
-            //
+            updateAdresses(listOfListOfBreaksInFor);
             Code.fixup(listAdrForConditionFalse.removeLast());
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Statement",45, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -2668,6 +2679,11 @@ class CUP$MJParser$actions {
             {
               Object RESULT =null;
 		
+            // Ne mora 0. Moze sta god.
+            //
+            Code.putJump(0);
+            int adr = Code.pc - 2;
+            listOfListOfBreaksInFor.getLast().addLast(adr);
             parser.log.debug("Prepoznat BREAK", null);
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Statement",45, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -2679,6 +2695,9 @@ class CUP$MJParser$actions {
             {
               Object RESULT =null;
 		
+            Code.putJump(0);
+            int adr = Code.pc - 2;
+            listOfListOfContinuesInFor.getLast().addLast(adr);
             parser.log.debug("Prepoznat CONTINUE", null);
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Statement",45, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);

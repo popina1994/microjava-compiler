@@ -24,43 +24,58 @@ public class MJParserTest {
 		Log4JUtils.instance().prepareLogFile(Logger.getRootLogger());
 	}
 	
+	public static final int SYNTAX_BIT_TEST = 0x1;
+	public static final int SEMATNIC_BIT_TEST = 0x1 << 1;
+	
+	private static boolean isSyntaxTest(int testType)
+	{
+		if ( (testType & SYNTAX_BIT_TEST) != 0)
+		{
+			return true;
+		}
+		return false;
+	}
+	
+	private static boolean isSemanticTest(int testType)
+	{
+		if ( (testType & SEMATNIC_BIT_TEST) != 0)
+		{
+			return true;
+		}
+		return false;
+	}
+	
 	public static void main(String[] args) throws Exception {
 		
-		
-		
-		String outputFileName = null;
+		String objFileName = null;
 		String inputFileName = null;
 		boolean debug = false;
-		boolean isSyntaxTest = true;
+		boolean isSyntaxTest = false;
+		boolean isSemanticTest = false;
+		int testType = 3;
 		PrintWriter printWriter = null;
 		File sourceCode = null;
+		System.out.println("Duzina niza" + args.length);
+		System.err.println("Duzina niza" + args.length);
 		
-		if (1 == args.length) {
-			inputFileName = args[0];
-		}
-		else if (2 == args.length) {
-			inputFileName = args[0];
-			isSyntaxTest = Boolean.parseBoolean(args[1]);;
-			
-		}
-		else if (3 == args.length){
-			inputFileName = args[0];
-			isSyntaxTest = Boolean.parseBoolean(args[1]);;
-			debug = Boolean.parseBoolean(args[2]);
-		}
-		else if (4 == args.length)
+		switch (args.length)
 		{
-			inputFileName = args[0];
-			isSyntaxTest = Boolean.parseBoolean(args[1]);
-			debug = Boolean.parseBoolean(args[2]);
-			outputFileName = args[3];
+			case 4:
+				objFileName = args[3];
+			case 3:
+				debug = Boolean.parseBoolean(args[2]);
+			case 2:
+				testType = Integer.parseInt(args[1]);
+			case 1:
+				inputFileName = args[0];
+				break;
+				default:
+					System.err.println("Pogresni argumenti");
+					System.exit(-1);
 		}
-		else {
-			System.err.println("Pogresni argumenti");
-			return;
-		}
-
 		
+		isSemanticTest = isSemanticTest(testType);
+		isSyntaxTest = isSyntaxTest(testType);
 		
 		Logger log = Logger.getLogger(MJParserTest.class);
 		Reader br = null;
@@ -68,9 +83,11 @@ public class MJParserTest {
 			
 			sourceCode = new File(inputFileName);	
 			
+			/*
 			if (null != outputFileName) {
 				printWriter = new PrintWriter( new File(outputFileName));
 			}
+			*/
 			//log.info("Compiling source file: " + sourceCode.getAbsolutePath());
 			
 			br = new BufferedReader(new FileReader(sourceCode));
@@ -82,6 +99,10 @@ public class MJParserTest {
 			MJParser p = new MJParser(lexer);
 			// Prints out to System.error.
 			//
+			if (null != objFileName)
+			{
+				p.setFileName(objFileName);
+			}
 			
 		
 			if (debug) {
@@ -93,10 +114,12 @@ public class MJParserTest {
 			
 			if (isSyntaxTest && p.syntaxError)
 			{
+				System.err.println("Sintaksa greska!!!");
 				System.exit(-1);
 			}
-			else if (!isSyntaxTest && p.semanticError)
+			else if (!isSemanticTest && p.semanticError)
 			{
+				System.err.println("Semanticka greska!!!");
 				System.exit(-1);
 			}
 			

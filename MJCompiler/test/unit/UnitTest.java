@@ -1,6 +1,7 @@
 package unit;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -96,13 +97,22 @@ public abstract class UnitTest {
 		return listArgs;
 	}
 	
-	private static UnitTestResult executeCommand(LinkedList<String> cmdAndArgs)
+	protected static UnitTestResult executeCommand(LinkedList<String> cmdAndArgs, String filePath)
 	{
 		if (cmdAndArgs == null)
 		{
 			return new UnitTestResult(true, UnitTestResult.OK);
 		}
-		ProcessBuilder processBuilder = new ProcessBuilder(cmdAndArgs).inheritIO();
+		ProcessBuilder processBuilder = new ProcessBuilder(cmdAndArgs);
+		if (null == filePath)
+		{
+			processBuilder.inheritIO();
+		}
+		else
+		{
+			File output = new File(filePath);
+			processBuilder.redirectOutput(output);
+		}
 		Process process;
 		
 		try {
@@ -137,6 +147,11 @@ public abstract class UnitTest {
 		return new UnitTestResult(true, UnitTestResult.OK);
 	}
 	
+	protected static UnitTestResult executeCommand(LinkedList<String> cmdAndArgs)
+	{
+		return executeCommand(cmdAndArgs, null);
+	}
+	
 	
 	public UnitTestResult executeTest(int unitTestNum)
 	{
@@ -157,7 +172,30 @@ public abstract class UnitTest {
 	
 	protected UnitTestResult executeAdditional(int unitTestNum)
 	{
-		return new UnitTestResult(true, UnitTestResult.OK);
+		String fileName = null;
+		LinkedList<String> listArgs = argumentsListAdditionalUnitTest(unitTestNum);
+		if (null != listArgs)
+		{
+			fileName = listArgs.removeLast();
+		}
+		UnitTestResult unitTestResult = executeCommand(listArgs, fileName);
+		if (!unitTestResult.isSuccessful())
+		{
+			return unitTestResult;
+		}
+		listArgs = argumentsListComapreResultUnitTest(unitTestNum);
+		unitTestResult = executeCommand(listArgs);
+		return unitTestResult;
+	}
+	
+	protected LinkedList<String> argumentsListAdditionalUnitTest(int unitTestNum)
+	{
+		return null;
+	}
+	
+	protected LinkedList<String> argumentsListComapreResultUnitTest(int unitTestNum)
+	{
+		return null;
 	}
 	
 	public UnitTestResult generateSouorceCodeFromSpec()

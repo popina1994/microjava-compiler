@@ -16,7 +16,7 @@ public abstract class UnitTestParser extends UnitTest{
 													};
 	
 
-	protected static final String PATH_TEST_UNIT_PROGRAM = PATH_PROJECT_PACKAGE + "/MJParserTest";
+	public static final String PATH_TEST_UNIT_PROGRAM = PATH_PROJECT_PACKAGE + "/MJParserTest";
 	
 	public UnitTestParser(String name) {
 		super(name);

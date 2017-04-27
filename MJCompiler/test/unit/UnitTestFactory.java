@@ -43,6 +43,8 @@ public class UnitTestFactory {
 				return UnitTestSyntax.TEST_MICRO_JAVA_PARSER_SYNTAX.length;
 			case UNIT_TEST_SEM:
 				return UnitTestSemantic.TEST_MICRO_JAVA_PARSER_SEMANTIC.length;
+			case UNIT_TEST_GEN:
+				return UnitTestCodeGenerator.TEST_MICRO_JAVA_CODE_GENERATOR_INPUT.length;
 			
 		}
 		return 0;

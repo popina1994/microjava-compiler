@@ -45,8 +45,21 @@ bool Boolean;
         for (i = 0; i < 3; i ++)
         {
             print('n');
+            if (i == 1)
+            {
+                continue;
+            }
+            if (i == 2)
+            {
+                break;
+            }
+
             for (j = 0; j < 2; j ++)
+            {
+                if (j == 0)
+                    continue;
                 print('a');
+            }
         }
         Boolean = true;
         print(Boolean);

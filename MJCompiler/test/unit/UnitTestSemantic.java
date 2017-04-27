@@ -30,7 +30,7 @@ public class UnitTestSemantic extends UnitTestParser {
 		listArgs.addLast(CLASS_PATH);
 		listArgs.addLast(PATH_TEST_UNIT_PROGRAM);
 		listArgs.addLast(TEST_MICRO_JAVA_PARSER_SEMANTIC[unitTestNum]);
-		listArgs.add("false"/*isSyntax*/);
+		listArgs.add("2"/*isSemantic*/);
 		return listArgs;
 	}
 

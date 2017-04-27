@@ -66,6 +66,20 @@ public class UnitTestCodeGenerator extends UnitTest {
 		
 		return listArgs;
 	}
+	
+	@Override
+	protected LinkedList<String> argumentsListComapreResultUnitTest(int unitTestNum)
+	{
+		LinkedList<String> listArgs = new LinkedList<String>();
+		listArgs.addLast(PATH_JAVA_EXE);
+		listArgs.addLast(FLAG_JAVA_RUN_NOT_MAIN);
+		listArgs.addLast(CLASS_PATH);
+		listArgs.addLast(PATH_TEST_UNIT_PROGRAM);
+		listArgs.addLast(TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT[unitTestNum] + EXT_OUTPUT);
+		listArgs.addLast(TEST_MICRO_JAVA_CODE_GENERATOR_TEST[unitTestNum]);
+		
+		return listArgs;
+	}
 
 	@Override
 	protected LinkedList<String> argumentsListUnitTestBuild() {

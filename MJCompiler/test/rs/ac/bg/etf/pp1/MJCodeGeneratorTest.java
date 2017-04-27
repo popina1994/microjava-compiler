@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.util.LinkedList;
 
 import org.apache.log4j.Logger;
 
@@ -15,14 +16,14 @@ public class MJCodeGeneratorTest {
 
 
 	public static void main(String[] args) throws Exception {
-		String inputFileName = null;
 		String testFileName = null;
 		String outputFileName = null;
-		PrintWriter printWriter = null;
-		File sourceCode = null;
-		if (3 == args.length)
+		BufferedReader outputBufferedReader = null;
+		BufferedReader testBufferedReader = null;  
+		Boolean equal = true;
+		if (2 == args.length)
 		{
-			inputFileName = args[0];
+			outputFileName= args[0];
 			testFileName = args[1];
 		}
 		else
@@ -35,34 +36,55 @@ public class MJCodeGeneratorTest {
 		Logger log = Logger.getLogger(MJCodeGeneratorTest.class);
 		
 		try {
+			outputBufferedReader = new BufferedReader(new FileReader(new File(outputFileName)));
+			testBufferedReader = new BufferedReader(new FileReader(new File(testFileName)));
 			
-			sourceCode = new File(inputFileName);	
+			int line = 0;
+			String outputLine = null;
+			String testLine = null;
 			
-			br = new BufferedReader(new FileReader(sourceCode));
-			Yylex lexer = new Yylex(br);
-			Symbol currToken = null;
+			int lineNotEqual = -1;
+			int cntNotEqual = 0;
 			
-			
-			@SuppressWarnings("deprecation")
-			MJParser p = new MJParser(lexer);
-			p.setFileName(outputFileName);
-			
-			Symbol s  = p.parse();
-		
-			if (p.errorDetected) 
+			outputLine = outputBufferedReader.readLine();
+			testLine = testBufferedReader.readLine();
+			while ( ( outputLine!= null) && (testLine != null))
 			{
-				System.exit(-1);
+				if (!outputLine.equals(testLine))
+				{
+					equal = false;
+					lineNotEqual = line;
+					cntNotEqual ++;
+				}
+				line ++;
+				outputLine = outputBufferedReader.readLine();
+				testLine = testBufferedReader.readLine();
 			}
 			
+			
+			if ( (lineNotEqual == line - 1) && (cntNotEqual == 1) && (outputLine == null)
+					&& (testLine == null))
+			{
+				equal = true;
+			}
 			
 			
 		}
 		finally {
 			if (br != null) try { br.close(); } catch (IOException e1) { 
 				log.error(e1.getMessage(), e1); }
-			if (null != printWriter) {
-				printWriter.close();
+			if (null != outputBufferedReader) {
+				outputBufferedReader.close();
 			}
+			if (null != testBufferedReader)
+			{
+				testBufferedReader.close();
+			}
+		}
+		
+		if (!equal)
+		{
+			System.exit(-1);
 		}
 		
 		

@@ -1185,9 +1185,22 @@ public class MJParser extends java_cup.runtime.lr_parser {
         return true;
     }
 
-    WrapperObj find_for_use(String name, String additionalMessage)
+    ObjResultWrapper find_for_use_and_report(String name, int line, String additionalMessage)
     {
-        return null;
+        ObjResultWrapper result = null;
+        Obj obj = Tab.find(name);
+        result = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
+        if (obj == Tab.noObj)
+        {
+            semnatic_error(additionalMessage + " Nije definisan u okruzujucem opsegu  u liniji" + line, null);
+            result.setSemanticError(true);
+        }
+        else
+        {
+            // neki info
+        }
+
+        return result;
     }
 
 
@@ -3550,7 +3563,10 @@ class CUP$MJParser$actions {
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
-            expr.generateRightValue();
+            if (!expr.isSemanticError())
+            {
+                expr.generateRightValue();
+            }
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$19",113, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -3570,34 +3586,45 @@ class CUP$MJParser$actions {
 		ObjResultWrapper compareRight = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
             //
-
-            if (null == compareRight)
+            if (!expr.isSemanticError()
+                && ( (null == compareRight) || (!compareRight.isSemanticError())))
             {
-                // TODO : add checki if is boolean
-                //
-                //RESULT = expr;
+                if (null == compareRight)
+                {
+                    if (!expr.getObj().getType().equals(TabExt.boolType))
+                    {
+                        RESULT = expr.setSemanticError(true);
+                    }
+                }
+                else
+                {
+                    // TODO: add checks for type compatiblility.
+                    //
+                    // JCONDFALSE.
+                    //
+                    Code.putFalseJump(compareRight.getRelOp(), 0);
+                    int adrFromWhereToJumpFalse = Code.pc - 2;
+                    // TRUE.
+                    //
+                    Code.put(Code.const_1);
+                    Code.putJump(0);
+                    int adrFromWhereToJumpTrue = Code.pc - 2;
+
+                    Code.fixup(adrFromWhereToJumpFalse);
+                    // False.
+                    //
+                    Code.put(Code.const_n);
+                    // JMP over this
+                    Code.fixup(adrFromWhereToJumpTrue);
+                }
+                RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", TabExt.boolType), true);
             }
             else
             {
-                // JCONDFALSE.
-                //
-                Code.putFalseJump(compareRight.getRelOp(), 0);
-                int adrFromWhereToJumpFalse = Code.pc - 2;
-                // TRUE.
-                //
-                Code.put(Code.const_1);
-                Code.putJump(0);
-                int adrFromWhereToJumpTrue = Code.pc - 2;
-
-                Code.fixup(adrFromWhereToJumpFalse);
-                // False.
-                //
-                Code.put(Code.const_n);
-                // JMP over this
-                Code.fixup(adrFromWhereToJumpTrue);
+                RESULT = expr;
             }
 
-            RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", TabExt.boolType), true);
+
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("CondFact",72, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -3614,9 +3641,13 @@ class CUP$MJParser$actions {
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            expr.generateRightValue();
-            expr.setRelOp(relOp);
+            if (!expr.isSemanticError())
+            {
+                expr.generateRightValue();
+                expr.setRelOp(relOp);
+            }
             RESULT = expr;
+
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("RelOpExprOrEpsilon",73, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -3644,7 +3675,9 @@ class CUP$MJParser$actions {
 		int termright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper term = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            if (isNegative && term.getObj().getType().equals(Tab.intType))
+            if (isNegative
+                && !term.isSemanticError()
+                && term.getObj().getType().equals(Tab.intType))
             {
                 Code.put(Code.neg);
                 term.generateRightValue();
@@ -3825,7 +3858,7 @@ class CUP$MJParser$actions {
 		int rightFactorright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper rightFactor = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            // Treba dodati provere za polja i sve ostale gluposti
+            // TODO: Treba dodati provere za polja i sve ostale gluposti
             //
             if (leftFactor.getObj().getType().equals(Tab.intType) &&
             rightFactor.getObj().getType().equals(Tab.intType)
@@ -3850,7 +3883,6 @@ class CUP$MJParser$actions {
             }
             else
             {
-                // set errorr;
                 RESULT = leftFactor.setSemanticError(true);
             }
         
@@ -4071,20 +4103,16 @@ class CUP$MJParser$actions {
 		int nameright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String name = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
-                Obj obj = Tab.find(name);
+            curObjWrappFieldOrElem = find_for_use_and_report(name, nameleft, name);
 
-                curObjWrappFieldOrElem = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
-                listCurObjWrapperFieldOrElem.addLast(curObjWrappFieldOrElem);
-                if (obj == Tab.noObj)
-                {
-                    curObjWrappFieldOrElem.setSemanticError(true);
-                }
-                else if (curObjWrappFieldOrElem.loadable())
-                {
-                    Code.load(curObjWrappFieldOrElem.getObj());
-                }
+            listCurObjWrapperFieldOrElem.addLast(curObjWrappFieldOrElem);
+            if ((!curObjWrappFieldOrElem.isSemanticError())
+            && (curObjWrappFieldOrElem.loadable()))
+            {
+                Code.load(curObjWrappFieldOrElem.getObj());
+            }
 
-            
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$20",114, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4102,29 +4130,34 @@ class CUP$MJParser$actions {
 		int objWrapperright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper objWrapper = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-                if ( (!curObjWrappFieldOrElem.isSemanticError())
-                && (objWrapper == null))
+            if (!curObjWrappFieldOrElem.isSemanticError())
+            {
+                if(objWrapper == null)
                 {
 
                     ObjResultWrapper objWrap = new ObjResultWrapper(curObjWrappFieldOrElem.getObj(), curObjWrappFieldOrElem.getObj().getKind() == Obj.Con);
                     RESULT = objWrap;
                 }
-                else if ( (objWrapper != null) && (!objWrapper.isSemanticError())
-                && (!objWrapper.getObj().equals(Tab.noObj)) )
+                else if ( (objWrapper != null) && (!objWrapper.isSemanticError()) )
                 {
                     RESULT = objWrapper;
                 }
-                else
-                {
-                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
-                }
+            }
+            else
+            {
+                RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+            }
+
+            if (!curObjWrappFieldOrElem.isSemanticError())
+            {
                 listCurObjWrapperFieldOrElem.removeLast();
                 if (listCurObjWrapperFieldOrElem.size() != 0)
                 {
                     curObjWrappFieldOrElem = listCurObjWrapperFieldOrElem.getLast();
                 }
+            }
 
-            
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Designator",84, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4137,8 +4170,8 @@ class CUP$MJParser$actions {
 		int objWrapright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper objWrap = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-                RESULT = objWrap;
-            
+            RESULT = objWrap;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DotIdentOrBracketExprListEpsilon",85, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4148,8 +4181,8 @@ class CUP$MJParser$actions {
             {
               ObjResultWrapper RESULT =null;
 		
-                RESULT = null;
-            
+            RESULT = null;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DotIdentOrBracketExprListEpsilon",85, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4165,17 +4198,17 @@ class CUP$MJParser$actions {
 		int objWrapperright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper objWrapper = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-                // TODO dodaj proveru da li je levo klasa ili niz (drugo nista ne moze...), i tek onda expandujes to ce ti biti nivo C, do tad ne brini (sledeca nedelja :O )
-                if (left.isSemanticError() || objWrapper.isSemanticError())
-                {
-                    RESULT = objWrapper.setSemanticError(true);
-                }
-                else
-                {
-                    RESULT = objWrapper;
-                }
+            // TODO dodaj proveru da li je levo klasa ili niz (drugo nista ne moze...), i tek onda expandujes to ce ti biti nivo C, do tad ne brini (sledeca nedelja :O )
+            if (left.isSemanticError() || objWrapper.isSemanticError())
+            {
+                RESULT = objWrapper.setSemanticError(true);
+            }
+            else
+            {
+                RESULT = objWrapper;
+            }
 
-            
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DotIdentOrBracketExprList",86, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4188,8 +4221,8 @@ class CUP$MJParser$actions {
 		int objWrapperright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper objWrapper = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-                RESULT = objWrapper;
-            
+            RESULT = objWrapper;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DotIdentOrBracketExprList",86, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4208,24 +4241,15 @@ class CUP$MJParser$actions {
             {
               ObjResultWrapper RESULT =null;
 		
-            if (curObjWrappFieldOrElem.isArray())
+            if (!curObjWrappFieldOrElem.isSemanticError()
+            && curObjWrappFieldOrElem.isArray())
             {
                 Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
-                if ( !curObjWrappFieldOrElem.isSemanticError()
-                    && !curArrayDotType.equals(Tab.noType))
-                    {
-                        // Add check for field..
-                        //
-                        Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
-                        curObjWrappFieldOrElem.setObj(obj);
-                        Code.put(Code.dup2);
-                        Code.load(obj);
-                        RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
-                    }
-                    else
-                    {
-                        RESULT = curObjWrappFieldOrElem.setSemanticError(true);
-                    }
+                Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
+                curObjWrappFieldOrElem.setObj(obj);
+                Code.put(Code.dup2);
+                Code.load(obj);
+                RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
             }
             else
             {
@@ -4242,6 +4266,9 @@ class CUP$MJParser$actions {
               ObjResultWrapper RESULT =null;
 		
             parser.report_error("Uspesan oporavak od greske kod indeksa niza,  BRACKET_RIGHT je resio stvar" , null);
+            // TODO test further.
+            //
+            RESULT = new ObjResultWrapper().setSyntaxError(true);
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DotIdentOrBracketExpr",87, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }

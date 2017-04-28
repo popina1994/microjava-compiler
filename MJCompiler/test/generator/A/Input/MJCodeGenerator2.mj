@@ -1,7 +1,5 @@
-program Test2
+program test
 {
-
-
     int fun1()
     {
         return 1;
@@ -22,6 +20,7 @@ program Test2
         return 'a';
     }
 
+
     void fun5(int par1, int par2[], char par3, char par4[], bool par5, bool par6[])
     int intProm, intNiz[];
     bool boolNiz[], boolProm2;
@@ -30,8 +29,19 @@ program Test2
 
     }
 
-    void main()
-    {
+	void main()
+    int varInt, nizInt[];
+    char varChar, nizChar[];
+    bool varBool, nizBool[];
+	{
+        varInt = 1;
+        print(varInt, 2);
 
-    }
+        varChar = 'a';
+        print(varChar, 2);
+
+        varBool = true;
+        print(varBool, 2);
+
+	}
 }

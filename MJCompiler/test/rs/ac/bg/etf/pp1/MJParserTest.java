@@ -55,8 +55,6 @@ public class MJParserTest {
 		int testType = 3;
 		PrintWriter printWriter = null;
 		File sourceCode = null;
-		System.out.println("Duzina niza" + args.length);
-		System.err.println("Duzina niza" + args.length);
 		
 		switch (args.length)
 		{
@@ -68,6 +66,7 @@ public class MJParserTest {
 				testType = Integer.parseInt(args[1]);
 			case 1:
 				inputFileName = args[0];
+				System.out.print(inputFileName);
 				break;
 				default:
 					System.err.println("Pogresni argumenti");

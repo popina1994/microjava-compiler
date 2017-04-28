@@ -158,10 +158,11 @@ parser code {:
         Obj obj;
         boolean isRightValue;
         boolean isLeftValue;
-        boolean isVar;
-        boolean isField;
         boolean semanticError = false;
+        boolean syntaxError = false;
         int relOp;
+
+        public ObjResultWrapper() {}
 
         public ObjResultWrapper(Obj obj, boolean isRightValue) {
             this.obj = obj;
@@ -174,10 +175,6 @@ parser code {:
         }
         public void setObj(Obj obj) {
             this.obj = obj;
-        }
-
-        public boolean getIsRightValue() {
-            return isRightValue;
         }
 
         public void setRightValue(boolean isRightValue) {
@@ -198,14 +195,35 @@ parser code {:
             return semanticError;
         }
 
+        public boolean isSyntaxError()
+        {
+            return syntaxError;
+        }
+
         public ObjResultWrapper setSemanticError(boolean semanticError) {
             this.semanticError = semanticError;
             return this;
         }
 
+        public ObjResultWrapper setSyntaxError(boolean syntaxError)
+        {
+            this.syntaxError = syntaxError;
+            return this;
+        }
+
+        public boolean isError()
+        {
+            return (syntaxError || semanticError);
+        }
+
+        public boolean isClass()
+        {
+            return false;
+        }
+
         public boolean  isField()
         {
-            return isField;
+            return false;
         }
 
         public boolean isArrayElement()
@@ -410,6 +428,7 @@ parser code {:
         return retWrapperObj;
     }
 
+
     boolean find_double_and_report_search(String name, int line, String additionalMessage)
     {
         Scope currentScope = Tab.currentScope;
@@ -542,8 +561,10 @@ non terminal Obj ConstNum;
 non terminal Obj ConstChar;
 non terminal Obj ConstBool;
 non terminal Obj ConstValue;
-non  terminal Struct VarExpr;
-non terminal GlobalVarExprList, GlobalVarExprCommaList, VarExprOrErrorSemi, VarExprOrErrorComma;
+non terminal ObjResultWrapper VarExpr;
+non terminal GlobalVarExprList, GlobalVarExprCommaList;
+non terminal ObjResultWrapper VarExprOrErrorSemi;
+non terminal ObjResultWrapper VarExprOrErrorComma;
 non terminal Boolean BracketEpsilon;
 non terminal ClassDecl, ExtendsTypeEpsilon, FieldDeclListEpsilon, FieldDeclList, FieldDecl, FieldExprList, BraceMethodDeclListEpsilonEpsilon;
 
@@ -610,6 +631,8 @@ Program ::=
     MethodDeclListEpsilon
     BRACE_RIGHT
     {:
+        // TODO update with virtual table.
+        //
         Code.dataSize = Tab.currentScope().getnVars();
         Tab.chainLocalSymbols(TabExt.programObj);
         Tab.closeScope();
@@ -634,7 +657,6 @@ Program ::=
         }
         else {
             parser.log.info("Uspesno parsiranje!!!", null);
-            //String fileName = "test/generator/program.obj";
             File f = new File(fileName);
             if (f.exists())
             {
@@ -662,14 +684,12 @@ GlobalDeclList ::=
 GlobalDecl ::=
     ConstDecl
     {:
-        //Tab.dump(TabExt.symbolTableVisitor);
     :}
 	|
     // Samo zbog oporavka od greske.
     //
 	GlobalVarDecl
     {:
-        //Tab.dump(TabExt.symbolTableVisitor);
     :}
 	|
 
@@ -694,15 +714,23 @@ GlobalVarDecl ::=
 GlobalVarExprList ::=
     GlobalVarExprCommaList VarExprOrErrorSemi
     |
-    VarExprOrErrorSemi
+    VarExprOrErrorSemi:exprOrError
+    {:
+        RESULT = exprOrError;
+    :}
     ;
 
 VarExprOrErrorSemi ::=
     VarExpr:t
     SEMI_COLUMN
+    {:
+        RESULT = (new ObjResultWrapper());
+    :}
     |
     error:text SEMI_COLUMN
     {:
+        RESULT = (new ObjResultWrapper()).setSyntaxError(true);
+
         parser.report_error("Uspesan oporavak od greske deklaracije globalne promenljive,  SEMI_COLUMN je resio stvar" , null);
     :}
     ;
@@ -710,14 +738,21 @@ VarExprOrErrorSemi ::=
 GlobalVarExprCommaList ::=
     GlobalVarExprCommaList VarExprOrErrorComma
     |
-    VarExprOrErrorComma
+    VarExprOrErrorComma:exprOrError
+    {:
+        RESULT = exprOrError;
+    :}
     ;
 VarExprOrErrorComma ::=
     VarExpr:t
     COMMA
+    {:
+        RESULT  = t;
+    :}
     |
     error COMMA
     {:
+        RESULT = (new ObjResultWrapper()).setSyntaxError(true);
         parser.report_error("Uspesan oporavak od greske prilikom deklaracije globalne promenljiva COMMA je resila stvar", null);
     :}
     ;
@@ -860,6 +895,10 @@ VarExpr ::=
             {
                 varObj.setAdr(Tab.currentScope().getnVars() - 1);
             }
+        }
+        else
+        {
+            RESULT = (new ObjResultWrapper()).setSemanticError(true);
         }
 
 

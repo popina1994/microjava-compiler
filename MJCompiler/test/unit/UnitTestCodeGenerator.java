@@ -9,16 +9,22 @@ public class UnitTestCodeGenerator extends UnitTest {
 	private static final String PACKAGE_CODE_GENERATOR_RUN = "rs.etf.pp1.mj.runtime.Run";
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_INPUT = new String[]
 			{
-					"A/Input/MJCodeGenerator1.mj"
+					"A/Input/MJCodeGenerator1.mj",
+					"A/Input/MJCodeGenerator2.mj",
+					"A/Input/MJCodeGenerator3.mj"
 			};
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT = new String[]
 			{
-					"A/Output/MJCodeGenerator1"
+					"A/Output/MJCodeGenerator1",
+					"A/Output/MJCodeGenerator2",
+					"A/Output/MJCodeGenerator3"
 			};
 	
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_TEST = new String[]
 			{
-					"A/Output/MJCodeGenerator1.test"
+					"A/Output/MJCodeGenerator1.test",
+					"A/Output/MJCodeGenerator2.test",
+					"A/Output/MJCodeGenerator3.test"
 			};
 	
 	private static final String PATH_TEST_CODE_GENERATOR_RUN = PATH_TEST + "/generator";

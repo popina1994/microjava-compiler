@@ -886,10 +886,11 @@ public class MJParser extends java_cup.runtime.lr_parser {
         Obj obj;
         boolean isRightValue;
         boolean isLeftValue;
-        boolean isVar;
-        boolean isField;
         boolean semanticError = false;
+        boolean syntaxError = false;
         int relOp;
+
+        public ObjResultWrapper() {}
 
         public ObjResultWrapper(Obj obj, boolean isRightValue) {
             this.obj = obj;
@@ -902,10 +903,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
         }
         public void setObj(Obj obj) {
             this.obj = obj;
-        }
-
-        public boolean getIsRightValue() {
-            return isRightValue;
         }
 
         public void setRightValue(boolean isRightValue) {
@@ -926,14 +923,35 @@ public class MJParser extends java_cup.runtime.lr_parser {
             return semanticError;
         }
 
+        public boolean isSyntaxError()
+        {
+            return syntaxError;
+        }
+
         public ObjResultWrapper setSemanticError(boolean semanticError) {
             this.semanticError = semanticError;
             return this;
         }
 
+        public ObjResultWrapper setSyntaxError(boolean syntaxError)
+        {
+            this.syntaxError = syntaxError;
+            return this;
+        }
+
+        public boolean isError()
+        {
+            return (syntaxError || semanticError);
+        }
+
+        public boolean isClass()
+        {
+            return false;
+        }
+
         public boolean  isField()
         {
-            return isField;
+            return false;
         }
 
         public boolean isArrayElement()
@@ -1138,6 +1156,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
         return retWrapperObj;
     }
 
+
     boolean find_double_and_report_search(String name, int line, String additionalMessage)
     {
         Scope currentScope = Tab.currentScope;
@@ -1302,6 +1321,8 @@ class CUP$MJParser$actions {
 		int programNameright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-5)).right;
 		String programName = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-5)).value;
 		
+        // TODO update with virtual table.
+        //
         Code.dataSize = Tab.currentScope().getnVars();
         Tab.chainLocalSymbols(TabExt.programObj);
         Tab.closeScope();
@@ -1326,7 +1347,6 @@ class CUP$MJParser$actions {
         }
         else {
             parser.log.info("Uspesno parsiranje!!!", null);
-            //String fileName = "test/generator/program.obj";
             File f = new File(fileName);
             if (f.exists())
             {
@@ -1396,7 +1416,6 @@ class CUP$MJParser$actions {
             {
               Object RESULT =null;
 		
-        //Tab.dump(TabExt.symbolTableVisitor);
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("GlobalDecl",3, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -1407,7 +1426,6 @@ class CUP$MJParser$actions {
             {
               Object RESULT =null;
 		
-        //Tab.dump(TabExt.symbolTableVisitor);
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("GlobalDecl",3, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -1468,7 +1486,12 @@ class CUP$MJParser$actions {
           case 14: // GlobalVarExprList ::= VarExprOrErrorSemi 
             {
               Object RESULT =null;
-
+		int exprOrErrorleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprOrErrorright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper exprOrError = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+        RESULT = exprOrError;
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("GlobalVarExprList",15, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -1476,11 +1499,13 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 15: // VarExprOrErrorSemi ::= VarExpr SEMI_COLUMN 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int tleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
 		int tright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
-		Struct t = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
-
+		ObjResultWrapper t = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
+		
+        RESULT = (new ObjResultWrapper());
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("VarExprOrErrorSemi",17, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -1488,11 +1513,13 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 16: // VarExprOrErrorSemi ::= error SEMI_COLUMN 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int textleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
 		int textright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
 		Object text = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		
+        RESULT = (new ObjResultWrapper()).setSyntaxError(true);
+
         parser.report_error("Uspesan oporavak od greske deklaracije globalne promenljive,  SEMI_COLUMN je resio stvar" , null);
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("VarExprOrErrorSemi",17, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -1512,7 +1539,12 @@ class CUP$MJParser$actions {
           case 18: // GlobalVarExprCommaList ::= VarExprOrErrorComma 
             {
               Object RESULT =null;
-
+		int exprOrErrorleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprOrErrorright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper exprOrError = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+        RESULT = exprOrError;
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("GlobalVarExprCommaList",16, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -1520,11 +1552,13 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 19: // VarExprOrErrorComma ::= VarExpr COMMA 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int tleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
 		int tright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
-		Struct t = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
-
+		ObjResultWrapper t = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
+		
+        RESULT  = t;
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("VarExprOrErrorComma",18, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -1532,8 +1566,9 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 20: // VarExprOrErrorComma ::= error COMMA 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
 		
+        RESULT = (new ObjResultWrapper()).setSyntaxError(true);
         parser.report_error("Uspesan oporavak od greske prilikom deklaracije globalne promenljiva COMMA je resila stvar", null);
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("VarExprOrErrorComma",18, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -1756,7 +1791,7 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 37: // VarExpr ::= IDENT BracketEpsilon 
             {
-              Struct RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int nameOfVarleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
 		int nameOfVarright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
 		String nameOfVar = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
@@ -1797,6 +1832,10 @@ class CUP$MJParser$actions {
             {
                 varObj.setAdr(Tab.currentScope().getnVars() - 1);
             }
+        }
+        else
+        {
+            RESULT = (new ObjResultWrapper()).setSemanticError(true);
         }
 
 

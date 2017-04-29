@@ -76,6 +76,8 @@ public class MJParserTest {
 		isSemanticTest = isSemanticTest(testType);
 		isSyntaxTest = isSyntaxTest(testType);
 		
+		//System.out.println("Je li semantika" + isSemanticTest);
+		
 		Logger log = Logger.getLogger(MJParserTest.class);
 		Reader br = null;
 		try {
@@ -116,7 +118,7 @@ public class MJParserTest {
 				System.err.println("Sintaksa greska!!!");
 				System.exit(-1);
 			}
-			else if (!isSemanticTest && p.semanticError)
+			else if (isSemanticTest && p.semanticError)
 			{
 				System.err.println("Semanticka greska!!!");
 				System.exit(-1);

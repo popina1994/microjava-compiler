@@ -1058,12 +1058,21 @@ public class MJParser extends java_cup.runtime.lr_parser {
         report_error("\nSintaksna greska", cur_token);
     }
 
-    public void semnatic_error(String msg, Symbol sym)
+    public void semantic_error(String msg, Symbol sym)
     {
         semanticError = true;
         report_error("\nSemnaticka greska : " + msg, sym);
     }
 
+    public void semantic_error(String msg)
+    {
+        semantic_error(msg, null);
+    }
+
+    public void semantic_error(String msg, int line)
+    {
+        semantic_error(msg + "Linija:" + line);
+    }
 
     // Overrideovana MJParser funkcija.
     //
@@ -1092,71 +1101,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
     }
 
 
-    static class WrapperObj
-    {
-        private Obj obj;
-        private boolean isFoundAndTypeMatch;
-
-        WrapperObj(Obj obj, boolean isFoundAndTypeMatch) {
-            this.obj = obj;
-            this.isFoundAndTypeMatch = isFoundAndTypeMatch;
-        }
-
-        Obj getObj() { return obj; }
-        boolean isFoundAndTypeMatch() { return isFoundAndTypeMatch; }
-
-        boolean isFound() { return obj != Tab.noObj; }
-        boolean isTypeMismatch(){
-            return isFound() && !isFoundAndTypeMatch;
-        }
-
-
-    }
-
-
-
-    public WrapperObj find_and_report_search(String name, int line, Struct type, String additionalMessage)
-    {
-        Obj obj = Tab.find(name);
-        WrapperObj retWrapperObj = null;
-
-        if (Tab.noObj == obj)
-        {
-            retWrapperObj = new WrapperObj(obj, false);
-        }
-        else if (!type.equals(obj.getType()))
-        {
-            retWrapperObj = new WrapperObj(obj, false);
-        }
-        else
-        {
-            retWrapperObj = new WrapperObj(obj, true);
-        }
-
-        if (null != additionalMessage)
-        {
-            additionalMessage += " simbol " + name + " na liniji " + line;
-            if (retWrapperObj.isFoundAndTypeMatch)
-            {
-                additionalMessage += " nadjen simbol";
-                report_info(additionalMessage, null);
-
-            }
-            else if (retWrapperObj.isTypeMismatch()) {
-                additionalMessage += " nije ispravnog tipa";
-                semnatic_error(additionalMessage, null);
-            }
-            else
-            {
-                additionalMessage += " nije nadjen ";
-                semnatic_error(additionalMessage, null);
-            }
-
-        }
-        return retWrapperObj;
-    }
-
-
     boolean find_double_and_report_search(String name, int line, String additionalMessage)
     {
         Scope currentScope = Tab.currentScope;
@@ -1166,8 +1110,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
         //
         if (objDoubleDef != null)
         {
-            additionalMessage += " simbol " + name + " na liniji " + line + " Vec postoji";
-            semnatic_error(additionalMessage, null);
+            additionalMessage += " simbol " + name +  " vec postoji.";
+            semantic_error(additionalMessage, line);
             return true;
         }
         else
@@ -1179,7 +1123,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
     boolean check_type_and_report(Obj obj, Struct type, int line, String additionalMessage)
     {
         if (!obj.getType().equals(type) && ( additionalMessage != null) ){
-            semnatic_error(additionalMessage + " Tipovi nisu kompatibilni linija" + line, null);
+            semantic_error(additionalMessage + ". Tipovi nisu kompatibilni.", line);
             return false;
         }
         return true;
@@ -1192,12 +1136,12 @@ public class MJParser extends java_cup.runtime.lr_parser {
         result = new ObjResultWrapper(obj, obj.getKind() == Obj.Con);
         if (obj == Tab.noObj)
         {
-            semnatic_error(additionalMessage + " Nije definisan u okruzujucem opsegu  u liniji" + line, null);
+            semantic_error(additionalMessage + " Nije definisan u okruzujucem opsegu.", line);
             result.setSemanticError(true);
         }
         else
         {
-            // neki info
+            // TODO : info za koriscenje objekta
         }
 
         return result;
@@ -1248,11 +1192,10 @@ class CUP$MJParser$actions {
     final int OP_ASSIGN_CODE = 0;
     final int CHAR_SIZE = 1;
     final int INT_SIZE = 4;
-    Struct curConstType = null;
-    Struct curVarType = null ;
-    Struct curLocalType = null;
-    Struct curFormType = null;
-    Obj curObjFieldOrElem = null;
+    ObjResultWrapper curConstType = null;
+    ObjResultWrapper curVarType = null ;
+    ObjResultWrapper curLocalType = null;
+    ObjResultWrapper curFormType = null;
     ObjResultWrapper curObjWrappFieldOrElem = null;
     LinkedList<ObjResultWrapper> listCurObjWrapperFieldOrElem = new LinkedList<ObjResultWrapper>();
     LinkedList<Integer> listAdrIfConditionTrue = new LinkedList<Integer>();
@@ -1334,19 +1277,24 @@ class CUP$MJParser$actions {
 		int programNameright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-5)).right;
 		String programName = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-5)).value;
 		
+
         // TODO update with virtual table.
         //
         Code.dataSize = Tab.currentScope().getnVars();
         Tab.chainLocalSymbols(TabExt.programObj);
         Tab.closeScope();
 
+        if (!TabExt.doesMainExist)
+        {
+            semantic_error("Ne postoji globalna main funkcija");
+        }
 
-        parser.report_info("************** NIVO A*****************", null);
+        parser.report_info("****************** NIVO A***********************", null);
         parser.report_info("Broj definicija globalnih promenljivih " + ParserCnt.globalVarDefCnt, null);
         parser.report_info("Broj definicija lokalnih promenljivih u main funkciji " + ParserCnt.localVarDefMainCnt, null);
         parser.report_info("Broj definicija globalnih konstanti " + ParserCnt.globalConstDefCnt, null);
         parser.report_info("Broj deklaracija globalnih nizova " + ParserCnt.globalArrayDeclCnt, null);
-        parser.report_info("************** NIVO B*****************", null);
+        parser.report_info("******************* NIVO B**********************", null);
         parser.report_info("Broj definicija globalnih i statickih funkcija unutrasnjih klasa " + ParserCnt.globalAndStaticMethodCnt, null);
         parser.report_info("USPESNO PREPOZNAVANJE", null);
         Tab.dump(TabExt.symbolTableVisitor);
@@ -1354,12 +1302,8 @@ class CUP$MJParser$actions {
         if (errorDetected)  {
             parser.report_error("Neuspesno parsiranje!!!", null);
         }
-        else if (!TabExt.doesMainExist)
-        {
-            parser.report_error("Ne postoji globalna main funkcija!!!", null);
-        }
         else {
-            parser.log.info("Uspesno parsiranje!!!", null);
+            parser.report_info("Uspesno parsiranje!!!", null);
             File f = new File(fileName);
             if (f.exists())
             {
@@ -1428,8 +1372,7 @@ class CUP$MJParser$actions {
           case 8: // GlobalDecl ::= ConstDecl 
             {
               Object RESULT =null;
-		
-    
+
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("GlobalDecl",3, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -1438,8 +1381,7 @@ class CUP$MJParser$actions {
           case 9: // GlobalDecl ::= GlobalVarDecl 
             {
               Object RESULT =null;
-		
-    
+
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("GlobalDecl",3, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -1461,7 +1403,7 @@ class CUP$MJParser$actions {
               Object RESULT =null;
 		int varTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int varTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Struct varType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper varType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
         curVarType = varType;
         globalVar = true;
@@ -1478,7 +1420,7 @@ class CUP$MJParser$actions {
                 RESULT = (Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		int varTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
 		int varTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
-		Struct varType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
+		ObjResultWrapper varType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
 		
         globalVar = false;
     
@@ -1630,7 +1572,7 @@ class CUP$MJParser$actions {
               Object RESULT =null;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
         curConstType = type;
     
@@ -1644,7 +1586,7 @@ class CUP$MJParser$actions {
               Object RESULT =(Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
 
 
     
@@ -1660,7 +1602,7 @@ class CUP$MJParser$actions {
                 RESULT = (Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).value;
 
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ConstDecl",7, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-5)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -1697,14 +1639,15 @@ class CUP$MJParser$actions {
 		
         // Da li se konstanta slaze po tipu sa deklaracijom.
         //
-        if (check_type_and_report(numObj, curConstType, numObj.getLevel(), " poredjenje tipova konstanti"))
+        if (!curConstType.isSemanticError()
+            &&(check_type_and_report(numObj, curConstType.getObj().getType(), numObj.getLevel(), " poredjenje tipova konstanti")))
         {
             // Da nema slucajno duplikata.
             //
             if (!find_double_and_report_search(nameOfConst, nameOfConstleft, "Konstanta"))
             {
-                 Obj constObj = Tab.insert(Obj.Con, nameOfConst, curConstType);
-            constObj.setAdr(numObj.getAdr());
+                Obj constObj = Tab.insert(Obj.Con, nameOfConst, curConstType.getObj().getType());
+                constObj.setAdr(numObj.getAdr());
             }
 
         }
@@ -1812,45 +1755,60 @@ class CUP$MJParser$actions {
 		int isArrayright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		Boolean isArray = (Boolean)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-        Struct type = null;
-        String message = "";
-        Obj varObj = null;
+        {
+            Struct typeVar = null;
+            String message = "";
+            Obj varObj = null;
 
 
-        if (globalVar)
-        {
-            message = "Definicija globalne varijable";
-            type = curVarType;
-        }
-        else if (localVar)
-        {
-            message = "Definicija lokalne varijable";
-            type = curLocalType;
-        }
-        else if (formVar)
-        {
-            message = "Definicija formalnog parametra";
-            type = curFormType;
-        }
-
-        if (isArray)
-        {
-            type = new Struct (Struct.Array, type);
-        }
-
-        if (!find_double_and_report_search(nameOfVar, nameOfVarleft, message))
-        {
-            varObj = Tab.insert(Obj.Var, nameOfVar, type);
-            if (formVar)
+            if (globalVar)
             {
-                varObj.setAdr(Tab.currentScope().getnVars() - 1);
+                message = "Definicija globalne varijable";
+                if (!curVarType.isSemanticError())
+                {
+                    typeVar = curVarType.getObj().getType();
+                }
+
+            }
+            else if (localVar)
+            {
+                message = "Definicija lokalne varijable";
+                if (!curLocalType.isSemanticError())
+                {
+                    typeVar = curLocalType.getObj().getType();
+                }
+            }
+            else if (formVar)
+            {
+                message = "Definicija formalnog parametra";
+                if (!curFormType.isSemanticError())
+                {
+                    typeVar = curFormType.getObj().getType();
+                }
+            }
+
+            if (isArray)
+            {
+                if (typeVar != null)
+                {
+                    typeVar = new Struct (Struct.Array, typeVar);
+                }
+            }
+
+            if (!find_double_and_report_search(nameOfVar, nameOfVarleft, message)
+                && (typeVar != null) )
+            {
+                varObj = Tab.insert(Obj.Var, nameOfVar, typeVar);
+                if (formVar)
+                {
+                    varObj.setAdr(Tab.currentScope().getnVars() - 1);
+                }
+            }
+            else
+            {
+                RESULT = (new ObjResultWrapper()).setSemanticError(true);
             }
         }
-        else
-        {
-            RESULT = (new ObjResultWrapper()).setSemanticError(true);
-        }
-
 
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("VarExpr",14, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -2001,7 +1959,7 @@ class CUP$MJParser$actions {
 		Object isStatic = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		int retTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int retTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Struct retType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper retType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
             parser.log.debug("Prepoznat povratni tip", null);
         
@@ -2018,7 +1976,7 @@ class CUP$MJParser$actions {
 		Object isStatic = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)).value;
 		int retTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
 		int retTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
-		Struct retType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
+		ObjResultWrapper retType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
 		int nameOfMethodleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
@@ -2026,7 +1984,7 @@ class CUP$MJParser$actions {
             String message = "Metoda";
             if (!find_double_and_report_search(nameOfMethod, nameOfMethodleft, message))
             {
-                TabExt.curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType);
+                TabExt.curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
             }
 
         
@@ -2043,7 +2001,7 @@ class CUP$MJParser$actions {
 		Object isStatic = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-5)).value;
 		int retTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).left;
 		int retTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).right;
-		Struct retType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).value;
+		ObjResultWrapper retType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).value;
 		int nameOfMethodleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
@@ -2063,7 +2021,7 @@ class CUP$MJParser$actions {
 		Object isStatic = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-7)).value;
 		int retTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).left;
 		int retTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).right;
-		Struct retType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).value;
+		ObjResultWrapper retType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).value;
 		int nameOfMethodleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).left;
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).value;
@@ -2088,7 +2046,7 @@ class CUP$MJParser$actions {
 		Object isStatic = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)).value;
 		int retTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-8)).left;
 		int retTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-8)).right;
-		Struct retType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-8)).value;
+		ObjResultWrapper retType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-8)).value;
 		int nameOfMethodleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).left;
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-6)).value;
@@ -2128,14 +2086,14 @@ class CUP$MJParser$actions {
 		Object isStatic = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-12)).value;
 		int retTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-11)).left;
 		int retTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-11)).right;
-		Struct retType = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-11)).value;
+		ObjResultWrapper retType = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-11)).value;
 		int nameOfMethodleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)).left;
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)).value;
 		
             // Dealocira se stek.
             //
-            if (retType == Tab.noType)
+            if (retType.getObj().getType() == Tab.noType)
             {
                 Code.put(Code.exit);
                 Code.put(Code.return_);
@@ -2180,10 +2138,10 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 60: // ReturnType ::= Type 
             {
-              Struct RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
                 RESULT = type;
             
@@ -2194,9 +2152,9 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 61: // ReturnType ::= VOID 
             {
-              Struct RESULT =null;
+              ObjResultWrapper RESULT =null;
 		
-                RESULT = Tab.noType;
+                RESULT = new ObjResultWrapper(new Obj(Obj.Type, "", Tab.noType), false);
             
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ReturnType",29, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -2280,7 +2238,7 @@ class CUP$MJParser$actions {
               Object RESULT =null;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
                 curLocalType =  type;
                 localVar = true;
@@ -2297,7 +2255,7 @@ class CUP$MJParser$actions {
                 RESULT = (Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)).value;
 		
                 localVar = false;
             
@@ -2478,7 +2436,7 @@ class CUP$MJParser$actions {
               Object RESULT =null;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
                 curFormType = type;
                 formVar = true;
@@ -2495,7 +2453,7 @@ class CUP$MJParser$actions {
                 RESULT = (Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
 		
                 formVar = false;
             
@@ -2506,21 +2464,21 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 91: // Type ::= IDENT 
             {
-              Struct RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int nameOfTypeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int nameOfTyperight = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String nameOfType = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-
             Obj obj = Tab.find(nameOfType);
             if (obj.getKind() != Obj.Type)
             {
-                RESULT = Tab.noType;
-                semnatic_error("Nije definisan tip" + nameOfType + "na liniji" + nameOfTypeleft, null);
+                obj = new Obj(Obj.Type, "", Tab.noType);
+                semantic_error("Nije definisan tip:" + nameOfType+" ", nameOfTypeleft);
+                RESULT = (new ObjResultWrapper(obj, false)).setSemanticError(true);
             }
             else
             {
-                RESULT = obj.getType();
+                RESULT = (new ObjResultWrapper(obj, false));
             }
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Type",44, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -3093,6 +3051,7 @@ class CUP$MJParser$actions {
 		int opright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		Integer op = (Integer)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
+
             if (!designator.isSemanticError() &&
                 designator.isLeftValue() && designator.getObj().getType().equals(Tab.intType))
                 {
@@ -3319,7 +3278,7 @@ class CUP$MJParser$actions {
             // Check error.
             //
             if (!dest.isSemanticError() && dest.isLeftValue() &&
-                !expr.isSemanticError())
+                (expr != null) &&!expr.isSemanticError())
             {
                 if (expr.isArrayElement())
                 {
@@ -3406,7 +3365,7 @@ class CUP$MJParser$actions {
               ObjResultWrapper RESULT =null;
 		
 
-        parser.report_error("Uspesan oporavak od greske dodele promenljive,  SEMI_COLUMN je resio stvar", null);
+            parser.report_error("Uspesan oporavak od greske dodele promenljive,  SEMI_COLUMN je resio stvar", null);
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ExpOrErrorSemi",66, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -3675,24 +3634,26 @@ class CUP$MJParser$actions {
 		int termright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper term = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            if (isNegative
-                && !term.isSemanticError()
-                && term.getObj().getType().equals(Tab.intType))
+        if (isNegative)
+        {
+            if (!term.isSemanticError()
+            && check_type_and_report(term.getObj(), Tab.intType, termleft, " Kad se - nalazi ispred nekog izraza, on mora biti int."))
             {
                 Code.put(Code.neg);
                 term.generateRightValue();
-                RESULT = term;
-            }
-            else if (!isNegative)
-            {
                 RESULT = term;
             }
             else
             {
                 RESULT = term.setSemanticError(true);
             }
+        }
+        else
+        {
+            RESULT = term;
+        }
 
-        
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Expr",74, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -3733,37 +3694,43 @@ class CUP$MJParser$actions {
 		int rightTermright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper rightTerm = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-        // Treba dodati provere za polja i sve ostale gluposti
-        //
-        if (leftTerm.getObj().getType().equals(Tab.intType) &&
-        rightTerm.getObj().getType().equals(Tab.intType)
-        && leftTerm.isLeftValue()
-        && !leftTerm.isSemanticError()
-        && !rightTerm.isSemanticError())
+    // Treba dodati provere za polja i sve ostale gluposti
+    //
+       if (!leftTerm.isSemanticError()
+        && !rightTerm.isSemanticError()
+        && check_type_and_report(leftTerm.getObj(), Tab.intType, rightTermleft, " Levi sabirak / umanjenik mora biti tipa int.")
+        && check_type_and_report(rightTerm.getObj(), Tab.intType, rightTermleft, " Desni sabirak / umanjilac mora biti tipa int."))
         {
-            rightTerm.generateRightValue();
-            Code.put(op);
-            if (leftTerm.isArrayElement())
+            if (leftTerm.isLeftValue())
             {
-                // a i sum
-                Code.put(Code.dup_x2);
-                // sum a i sum
+                rightTerm.generateRightValue();
+                Code.put(op);
+                if (leftTerm.isArrayElement())
+                {
+                    // a i sum
+                    Code.put(Code.dup_x2);
+                    // sum a i sum
+                }
+                else
+                {
+                    Code.put(Code.dup);
+                }
+                // sum
+                Code.store(leftTerm.getObj());
+                // TO DO : ARray class and other shit.
+                //
+
+                leftTerm.setRightValue(true);
+                RESULT = leftTerm;
             }
             else
             {
-                Code.put(Code.dup);
+                semantic_error("Kod += -= leva strana treba da bude lvalue");
+                RESULT = leftTerm.setSemanticError(true);
             }
-            // sum
-            Code.store(leftTerm.getObj());
-            // TO DO : ARray class and other shit.
-            //
-
-            leftTerm.setRightValue(true);
-            RESULT = leftTerm;
         }
         else
         {
-            // set errorr;
             RESULT = leftTerm.setSemanticError(true);
         }
     
@@ -3779,8 +3746,8 @@ class CUP$MJParser$actions {
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            RESULT = type;
-        
+        RESULT = type;
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("AddopRightTerm",76, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -3799,19 +3766,20 @@ class CUP$MJParser$actions {
 		int rightTermright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper rightTerm = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-        if (leftTerm.getObj().getType().equals(Tab.intType)
-        && (rightTerm.getObj().getType().equals(Tab.intType)))
-        {
-            rightTerm.generateRightValue();
-            Code.put(op);
-            leftTerm.generateRightValue();
-            RESULT = new ObjResultWrapper(new Obj(Obj.Con,"",Tab.intType), true);
+        if (check_type_and_report(leftTerm.getObj(), Tab.intType, leftTermleft, " Tip levog sabirka/umanjenika u zbiru/proizvodu mora da bude int")
+            &&
+            check_type_and_report(rightTerm.getObj(), Tab.intType, rightTermleft, " Tip desnog sabirka/umanjioca u zbiru/razlici mora biti int"))
+            {
+                rightTerm.generateRightValue();
+                Code.put(op);
+                leftTerm.generateRightValue();
+                RESULT = new ObjResultWrapper(new Obj(Obj.Con,"",Tab.intType), true);
         }
         else
         {
             RESULT = leftTerm.setSemanticError(true);
         }
-        
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("AddopLeftTerm",77, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -3824,8 +3792,8 @@ class CUP$MJParser$actions {
 		int termright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper term = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            RESULT = term;
-        
+        RESULT = term;
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("AddopLeftTerm",77, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -3860,26 +3828,33 @@ class CUP$MJParser$actions {
 		
             // TODO: Treba dodati provere za polja i sve ostale gluposti
             //
-            if (leftFactor.getObj().getType().equals(Tab.intType) &&
-            rightFactor.getObj().getType().equals(Tab.intType)
-            && leftFactor.isLeftValue()
-            && !leftFactor.isSemanticError()
-            && !rightFactor.isSemanticError())
+            if (!leftFactor.isSemanticError()
+            && !rightFactor.isSemanticError()
+            && check_type_and_report(leftFactor.getObj(), Tab.intType, leftFactorleft, " Levi cinilac / deljenik mora biti tipa int.")
+            && check_type_and_report(rightFactor.getObj(), Tab.intType, rightFactorleft, " Desni cinilac / delilac mora biti tipa int."))
             {
-                rightFactor.generateRightValue();
-                Code.put(op);
-                if (leftFactor.isArrayElement())
+                if (leftFactor.isLeftValue())
                 {
-                    Code.put(Code.dup_x2);
+                    rightFactor.generateRightValue();
+                    Code.put(op);
+                    if (leftFactor.isArrayElement())
+                    {
+                        Code.put(Code.dup_x2);
+                    }
+                    else
+                    {
+                        Code.put(Code.dup);
+                    }
+
+                    Code.store(leftFactor.getObj());
+                    leftFactor.setRightValue(true);
+                    RESULT = leftFactor;
                 }
                 else
                 {
-                    Code.put(Code.dup);
+                    semantic_error("Kod /= *= %= leva strana treba da bude lvalue");
+                    RESULT = leftFactor.setSemanticError(true);
                 }
-
-                Code.store(leftFactor.getObj());
-                leftFactor.setRightValue(true);
-                RESULT = leftFactor;
             }
             else
             {
@@ -3894,11 +3869,11 @@ class CUP$MJParser$actions {
           case 175: // MullopRightFactor ::= MulopLeftFactor 
             {
               ObjResultWrapper RESULT =null;
-		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
-		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		int factorleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int factorright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper factor = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            RESULT = type;
+            RESULT = factor;
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("MullopRightFactor",79, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -3918,8 +3893,9 @@ class CUP$MJParser$actions {
 		int rightFactorright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper rightFactor = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            if (leftFactor.getObj().getType().equals(Tab.intType)
-            && (rightFactor.getObj().getType().equals(Tab.intType)))
+            if (check_type_and_report(leftFactor.getObj(), Tab.intType, leftFactorleft, " Tip levog cinioca/deljenika u proizvodu mora da bude int")
+            &&
+                check_type_and_report(rightFactor.getObj(), Tab.intType, rightFactorleft, " Tip desnog cinioca/delioca mora biti int"))
             {
                 rightFactor.generateRightValue();
                 Code.put(op);
@@ -3943,7 +3919,6 @@ class CUP$MJParser$actions {
 		int factorright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper factor = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            // Do ovde dodje x : i : x[i]
             RESULT = factor;
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("MulopLeftFactor",80, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -3999,40 +3974,61 @@ class CUP$MJParser$actions {
               ObjResultWrapper RESULT =null;
 		int typeleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
 		int typeright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
-		Struct type = (Struct)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
-		int isArrayleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
-		int isArrayright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
-		Boolean isArray = (Boolean)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		ObjResultWrapper type = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
+		int exprWrapleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprWrapright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper exprWrap = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            if (isArray)
+            if (null != exprWrap)
             {
-                Code.put(Code.newarray);
-                // TODO: For classes which are non word alligned,
-                // alloc using char
-                //
-                if (type.equals(Tab.charType))
+                if (!exprWrap.isSemanticError()
+                    && !type.isSemanticError()
+                    && check_type_and_report(exprWrap.getObj(),
+                                          Tab.intType,
+                                         exprWrapleft,
+                                         "Tip izraza kod NEW operatora sa nizom mora da bude int"))
                 {
-                    Code.put(0);
+
+                    Code.put(Code.newarray);
+                    // TODO: For classes which are non word alligned,
+                    // alloc using char
+                    //
+                    if (type.getObj().getType().equals(Tab.charType))
+                    {
+                        Code.put(0);
+                    }
+                    else
+                    {
+                        Code.put(1);
+                    }
+                    Struct struct = new Struct(Struct.Array, type.getObj().getType());
+                    RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", struct), true);
                 }
                 else
                 {
-                    Code.put(1);
+                    RESULT = (new ObjResultWrapper()).setSemanticError(true);
                 }
-                Struct struct = new Struct(Struct.Array, type);
-                RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", struct), true);
             }
             else
             {
-                // TODO : if it's class alloc as it is supposed to be.
-                //
-                if (type.equals(Tab.charType))
+                if (!type.isSemanticError())
                 {
-                    Code.put(CHAR_SIZE);
+                    // TODO : if it's class alloc as it is supposed to be.
+                    //
+                    if (type.getObj().getType().equals(Tab.charType))
+                    {
+                        Code.put(CHAR_SIZE);
+                    }
+                    else
+                    {
+                        Code.put(INT_SIZE);
+                    }
                 }
                 else
                 {
-                    Code.put(INT_SIZE);
+                    RESULT = (new ObjResultWrapper()).setSemanticError(true);
                 }
+
             }
             // TO DO : Add check of errors.
             //
@@ -4076,9 +4072,12 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 185: // BracketExprEpsilon ::= BRACKET_LEFT Expr BRACKET_RIGHT 
             {
-              Boolean RESULT =null;
+              ObjResultWrapper RESULT =null;
+		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
+		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
+		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		
-                RESULT = true;
+                RESULT = expr;
             
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("BracketExprEpsilon",83, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -4087,9 +4086,9 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 186: // BracketExprEpsilon ::= 
             {
-              Boolean RESULT =null;
+              ObjResultWrapper RESULT =null;
 		
-                RESULT = false;
+                RESULT = null;
             
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("BracketExprEpsilon",83, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -4103,7 +4102,9 @@ class CUP$MJParser$actions {
 		int nameright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String name = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
+            // TODO add more checks if is correct.
             curObjWrappFieldOrElem = find_for_use_and_report(name, nameleft, name);
+
 
             listCurObjWrapperFieldOrElem.addLast(curObjWrappFieldOrElem);
             if ((!curObjWrappFieldOrElem.isSemanticError())
@@ -4145,7 +4146,7 @@ class CUP$MJParser$actions {
             }
             else
             {
-                RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                RESULT = curObjWrappFieldOrElem;
             }
 
             if (!curObjWrappFieldOrElem.isSemanticError())
@@ -4240,21 +4241,34 @@ class CUP$MJParser$actions {
           case 194: // DotIdentOrBracketExpr ::= BRACKET_LEFT Expr BRACKET_RIGHT 
             {
               ObjResultWrapper RESULT =null;
+		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
+		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
+		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		
             if (!curObjWrappFieldOrElem.isSemanticError()
-            && curObjWrappFieldOrElem.isArray())
-            {
-                Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
-                Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
-                curObjWrappFieldOrElem.setObj(obj);
-                Code.put(Code.dup2);
-                Code.load(obj);
-                RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
-            }
+            && !expr.isSemanticError()
+            && check_type_and_report(expr.getObj(), Tab.intType,
+            exprleft, " indeks niza mora bude tipa int")
+            )
+                if (curObjWrappFieldOrElem.isArray())
+                {
+                    Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
+                    Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
+                    curObjWrappFieldOrElem.setObj(obj);
+                    Code.put(Code.dup2);
+                    Code.load(obj);
+                    RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
+                }
+                else
+                {
+                    semantic_error("Kad se koriste [] sa leve strane mora biti niz", exprleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
             else
             {
                 RESULT = curObjWrappFieldOrElem.setSemanticError(true);
             }
+
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DotIdentOrBracketExpr",87, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }

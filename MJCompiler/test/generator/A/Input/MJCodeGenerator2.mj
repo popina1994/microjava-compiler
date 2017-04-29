@@ -1,3 +1,5 @@
+// Testira lokalne promenljive.
+//
 program test
 {
     int fun1()

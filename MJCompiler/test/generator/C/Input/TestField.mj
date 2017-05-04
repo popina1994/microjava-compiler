@@ -1,0 +1,58 @@
+program Test
+
+int t;
+
+class K1
+{
+	int i, tNiz[];
+	char c, cNiz[];
+	bool b, bNiz[];
+	{
+		void m() {
+			print('m');
+		}
+		void n(int z)  { print(z); } 
+		int t() {}
+		K1 R() {}
+		K1 Z1(K1 k, int t, int r) {}
+		static void test() 
+		{ 
+			print('t');
+		}
+		static void Z2(K1 k, K1 k1, K1 k2, int r) {}
+		static int Z3(K1 k) {}
+		
+		static int R1(int t) { return t + 1;}
+	}
+}
+{
+	void main()
+		K1 k1, kArr[];
+		int i;
+	{
+		k1 = new K1;
+		k1.i = 1;
+		k1.c = 'a';
+		k1.b = true;
+		
+		kArr = new K1[3];
+		kArr[0] = new K1;
+		kArr[1] = new K1;
+		kArr[2] = new K1;
+		
+		for (i = 0; i < 3; i ++)
+			kArr[i].i = i;
+			
+		for (i = 0; i < 3; i ++)
+			print(kArr[i].i);
+		
+		print(k1.i);
+		print(k1.c);
+		print(k1.b);
+		K1.test();
+		print(K1.R1(1));
+		//print(k1._vftPointer);
+		k1.m();
+		k1.n(1);
+	}
+}

@@ -55,6 +55,8 @@ public class MJCodeGeneratorTest {
 					equal = false;
 					lineNotEqual = line;
 					cntNotEqual ++;
+					System.out.println("Output " + outputLine);
+					System.out.println("Test " + testLine);
 				}
 				line ++;
 				outputLine = outputBufferedReader.readLine();

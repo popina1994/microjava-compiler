@@ -11,7 +11,8 @@ public class UnitTestSyntax extends UnitTestParser {
 			"A/correct/MJSyntaxTest4.mj",
 			"A/recovery/MJSyntaxTest1.mj",
 			"A/recovery/MJSyntaxTest2.mj",
-			"A/recovery/MJSyntaxTest3.mj"
+			"A/recovery/MJSyntaxTest3.mj",
+			"C/correct/TestField.mj"
 	};
 	private static final String PATH_TEST_SYNTAX_RUN = PATH_TEST + "/parser/syntax";
 	

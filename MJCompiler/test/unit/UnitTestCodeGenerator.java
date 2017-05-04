@@ -11,20 +11,26 @@ public class UnitTestCodeGenerator extends UnitTest {
 			{
 					"A/Input/MJCodeGenerator1.mj",
 					"A/Input/MJCodeGenerator2.mj",
-					"A/Input/MJCodeGenerator3.mj"
+					"A/Input/MJCodeGenerator3.mj",
+					"A/Input/MJCodeGenerator4.mj",
+					"A/Input/test301.mj"
 			};
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT = new String[]
 			{
 					"A/Output/MJCodeGenerator1",
 					"A/Output/MJCodeGenerator2",
-					"A/Output/MJCodeGenerator3"
+					"A/Output/MJCodeGenerator3",
+					"A/Output/MJCodeGenerator4",
+					"A/Output/test301.mj"
 			};
 	
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_TEST = new String[]
 			{
 					"A/Output/MJCodeGenerator1.test",
 					"A/Output/MJCodeGenerator2.test",
-					"A/Output/MJCodeGenerator3.test"
+					"A/Output/MJCodeGenerator3.test",
+					"A/Output/MJCodeGenerator4.test",
+					"A/Output/test301.test"
 			};
 	
 	private static final String PATH_TEST_CODE_GENERATOR_RUN = PATH_TEST + "/generator";

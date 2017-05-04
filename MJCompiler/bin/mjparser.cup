@@ -5,6 +5,7 @@ import org.apache.log4j.*;
 
 import java.io.*;
 import java.util.LinkedList;
+import java.util.Collection;
 import rs.etf.pp1.symboltable.Tab;
 import rs.etf.pp1.symboltable.concepts.*;
 import rs.etf.pp1.mj.runtime.*;
@@ -46,15 +47,23 @@ parser code {:
             output.append(objToVisit.getName());
             output.append(": ");
 
-            if ((Obj.Var == objToVisit.getKind()) && "this".equalsIgnoreCase(objToVisit.getName()))
-                output.append("");
+            if ( (objToVisit.getKind() == Obj.Meth) && (objToVisit.getType().getKind() == Struct.Class))
+            {
+                output.append("Class ");
+                output.append(objToVisit.getType());
+                output.append(", ");
+                output.append("Adr:" + objToVisit.getAdr());
+                output.append(", ");
+                output.append("Level:" + objToVisit.getLevel() + " ");
+            }
             else
+            {
                 objToVisit.getType().accept(this);
-
-            output.append(", ");
-            output.append("Adr:" + objToVisit.getAdr());
-            output.append(", ");
-            output.append("Level:" + objToVisit.getLevel() + " ");
+                output.append(", ");
+                output.append("Adr:" + objToVisit.getAdr());
+                output.append(", ");
+                output.append("Level:" + objToVisit.getLevel() + " ");
+            }
 
             if (objToVisit.getKind() == Obj.Prog || objToVisit.getKind() == Obj.Meth) {
                 output.append("\n");
@@ -64,7 +73,22 @@ parser code {:
 
             for (Obj o : objToVisit.getLocalSymbols()) {
                 output.append(currentIndent.toString());
-                o.accept(this);
+                if ((objToVisit.getKind() == Obj.Meth) &&(o.getType().getKind() == Struct.Class))
+                {
+                    output.append("Var ");
+                    output.append(o.getName());
+                    output.append(": ");
+                    output.append("Class ");
+                    output.append(o.getType());
+                    output.append(", ");
+                    output.append("Adr:" + o.getAdr());
+                    output.append(", ");
+                    output.append("Level:" + o.getLevel() + " ");
+                }
+                else
+                {
+                    o.accept(this);
+                }
                 output.append("\n");
             }
 
@@ -126,10 +150,18 @@ parser code {:
                 }
                 break;
             case Struct.Class:
-                output.append("Class [");
+                output.append("Class [\n");
+                nextIndentationLevel();
                 for (Obj obj : structToVisit.getMembers()) {
+                    output.append(currentIndent.toString());
                     obj.accept(this);
+                    if (obj.getKind() == Obj.Fld)
+                    {
+                        output.append("\n");
+                    }
                 }
+                previousIndentationLevel();
+                output.append(currentIndent.toString());
                 output.append("]");
                 break;
             }
@@ -152,6 +184,7 @@ parser code {:
         static Obj curMethod = null;
         static Obj curClass = null;
         static boolean doesMainExist = false;
+        static int staticDataCnt = 0;
     }
 
     public static class ObjResultWrapper {
@@ -161,6 +194,7 @@ parser code {:
         boolean semanticError = false;
         boolean syntaxError = false;
         int relOp;
+        boolean isVirtual = false;
 
         public ObjResultWrapper() {}
 
@@ -216,14 +250,14 @@ parser code {:
             return (syntaxError || semanticError);
         }
 
-        public boolean isClass()
-        {
-            return false;
-        }
-
         public boolean  isField()
         {
-            return false;
+            return obj.getKind() == Obj.Fld && isLeftValue;
+        }
+
+        public boolean isClassType()
+        {
+            return (obj.getKind() == Obj.Type) && (obj.getType().getKind() == Struct.Class);
         }
 
         public boolean isArrayElement()
@@ -236,9 +270,15 @@ parser code {:
             return (isLeftValue &&  (obj.getType().getKind() == Struct.Array) );
         }
 
-
-        public void generateLeftValue()
+        public boolean isClass()
         {
+            return (isLeftValue && (obj.getType().getKind() == Struct.Class));
+        }
+
+
+        public boolean hasAdditionalParsOnStack()
+        {
+            return isArrayElement() || isField();
         }
 
         public boolean loadable()
@@ -262,6 +302,27 @@ parser code {:
                 // a[i]
                 setRightValue(true);
             }
+            else if (isField())
+            {
+                // x x.i
+                Code.put(Code.dup_x1);
+                // x.i x x.i
+                Code.put(Code.pop);
+                // x.i x
+                Code.put(Code.pop);
+                // x.i
+                setRightValue(true);
+            }
+        }
+
+        public boolean isVirtual()
+        {
+            return isVirtual;
+        }
+
+        public void setVirtual(boolean isVirtual)
+        {
+            this.isVirtual = isVirtual;
         }
 
         public void setRelOp(int relOp)
@@ -281,7 +342,7 @@ parser code {:
     //
      @Override
     protected int error_sync_size() {
-        // TODO Auto-generated method stub
+        // TODO Auto-generated method stubTab
         return 1;
     }
 
@@ -420,6 +481,7 @@ parser code {:
     }
 
 
+
     void pushOnCodeStack(LinkedList<LinkedList<Byte>> codeStack, int beginAddress)
     {
         // Oprezno, mozda je jos neophodno azurirati!!!
@@ -453,10 +515,57 @@ parser code {:
         }
     }
 
+    void putIntInStaticData(int val)
+    {
+        Code.loadConst(val);
+        Code.put(Code.putstatic);
+        Code.put2(TabExt.staticDataCnt++);
+    }
+
+    boolean isMethodStatic(Obj obj)
+    {
+        return obj.getFpPos() != 0;
+    }
+
+    void setMethodStatic(Obj obj)
+    {
+        obj.setFpPos(1);
+    }
+
+    void initVirtualFunctionTable(Obj objType, LinkedList<Integer> listVFTAdresses)
+    {
+        Struct type = objType.getType();
+        Collection<Obj> symbols = type.getMembers();
+        if (listVFTAdresses.size() > 0)
+        {
+            Code.fixup(listVFTAdresses.getLast());
+        }
+
+        objType.setAdr(TabExt.staticDataCnt);
+        for (Obj obj : symbols)
+        {
+            if ( (obj.getKind() == Obj.Meth) && !isMethodStatic(obj))
+            {
+                String name = obj.getName();
+                for (int idx = 0; idx < name.length(); idx ++)
+                {
+                    putIntInStaticData((int)name.charAt(idx));
+                }
+                putIntInStaticData(-1);
+                putIntInStaticData(obj.getAdr());
+            }
+        }
+        putIntInStaticData(-2);
+
+        Code.putJump(0);
+        listVFTAdresses.addLast(Code.pc - 2);
+    }
+
 :}
 
 action code {:
     final String METHOD_ENTRY_NAME = "main";
+    final String VFT_POINTER_NAME = "_vftPointer";
     final int OP_ASSIGN_CODE = 0;
     final int CHAR_SIZE = 1;
     final int INT_SIZE = 4;
@@ -464,7 +573,9 @@ action code {:
     ObjResultWrapper curVarType = null ;
     ObjResultWrapper curLocalType = null;
     ObjResultWrapper curFormType = null;
+    ObjResultWrapper curFieldType = null;
     ObjResultWrapper curObjWrappFieldOrElem = null;
+    ObjResultWrapper curObjWrapperClass = null;
     LinkedList<ObjResultWrapper> listCurObjWrapperFieldOrElem = new LinkedList<ObjResultWrapper>();
     LinkedList<Integer> listAdrIfConditionTrue = new LinkedList<Integer>();
     LinkedList<Integer> listAdrIfConditionFalse = new LinkedList<Integer>();
@@ -474,15 +585,17 @@ action code {:
     LinkedList<LinkedList<Byte>> listSavedCode = new LinkedList<LinkedList<Byte>>();
     LinkedList<LinkedList<Integer>> listOfListOfBreaksInFor = new LinkedList<LinkedList<Integer>>();
     LinkedList<LinkedList<Integer>> listOfListOfContinuesInFor = new LinkedList<LinkedList<Integer>>();
+    LinkedList<Integer> listVFTAdresses = new LinkedList<Integer>();
     Integer forLastDesigantorBeginAddress = null;
 
 
     boolean globalVar = false;
     boolean localVar = false;
     boolean formVar = false;
+    boolean fieldVar = false;
+    boolean isInClass = false;
+    boolean addThis = false;
     int formParCnt = 0;
-
-
 
 :}
 
@@ -524,7 +637,8 @@ non terminal ObjResultWrapper VarExprOrErrorComma;
 non terminal Boolean BracketEpsilon;
 non terminal ClassDecl, ExtendsTypeEpsilon, FieldDeclListEpsilon, FieldDeclList, FieldDecl, FieldExprList, BraceMethodDeclListEpsilonEpsilon;
 
-non terminal MethodDecl, StaticEpsilon;
+non terminal MethodDecl;
+non terminal Boolean StaticEpsilon;
 non terminal  ObjResultWrapper ReturnType;
 non terminal  LocalVarDeclListBraceLeftEpsilon, LocalVarDeclListBraceLeft, LocalVarDeclOrErrorSemi, LocalVarDeclListOrErrorSemi, LocalVarExprList, LocalVarDeclOrErrorBraceLeft, StatementListEpsilon, StatementList;
 non terminal FormPars, FormPar, FormParsEpsilonParRight, FormParOrErrorComma, FormParsParRight, FormParOrErrorParRight;
@@ -578,6 +692,40 @@ Program ::=
     {:
 
         Tab.insert(Obj.Type, "bool", TabExt.boolType);
+
+        Obj eolObj = Tab.find("eol");
+        eolObj.setAdr((int)'\n');
+
+        Obj chrObj = Tab.find("chr");
+        chrObj.setAdr(Code.pc);
+        Code.put(Code.enter);
+        Code.put(1);
+        Code.put(1);
+        // Read variable from procedure stack and leave it as return value.
+        Code.put(Code.load_n);
+        Code.put(Code.exit);
+        Code.put(Code.return_);
+
+        Obj ordObj = Tab.find("ord");
+        ordObj.setAdr(Code.pc);
+        Code.put(Code.enter);
+        Code.put(1);
+        Code.put(1);
+        Code.put(Code.load_n);
+        Code.put(Code.exit);
+        Code.put(Code.return_);
+
+        Obj lenObj = Tab.find("len");
+        lenObj.setAdr(Code.pc);
+        Code.put(Code.enter);
+        Code.put(1);
+        Code.put(1);
+        Code.put(Code.load_n);
+        Code.put(Code.arraylength);
+        Code.put(Code.exit);
+        Code.put(Code.return_);
+
+
         TabExt.programObj = Tab.insert(Obj.Prog, programName, Tab.noType);
 
         Tab.openScope();
@@ -590,7 +738,7 @@ Program ::=
 
         // TODO update with virtual table.
         //
-        Code.dataSize = Tab.currentScope().getnVars();
+        Code.dataSize = TabExt.staticDataCnt;
         Tab.chainLocalSymbols(TabExt.programObj);
         Tab.closeScope();
 
@@ -819,6 +967,7 @@ VarExpr ::=
             Struct typeVar = null;
             String message = "";
             Obj varObj = null;
+            int objType = Obj.Var;
 
 
             if (globalVar)
@@ -846,6 +995,15 @@ VarExpr ::=
                     typeVar = curFormType.getObj().getType();
                 }
             }
+            else if (fieldVar)
+            {
+                message = "Definicija polja klase";
+                if (!curFieldType.isSemanticError())
+                {
+                    typeVar = curFieldType.getObj().getType();
+                    objType = Obj.Fld;
+                }
+            }
 
             if (isArray)
             {
@@ -858,10 +1016,17 @@ VarExpr ::=
             if (!find_double_and_report_search(nameOfVar, nameOfVarleft, message)
                 && (typeVar != null) )
             {
-                varObj = Tab.insert(Obj.Var, nameOfVar, typeVar);
+
+                varObj = Tab.insert(objType, nameOfVar, typeVar);
                 if (formVar)
                 {
                     varObj.setAdr(Tab.currentScope().getnVars() - 1);
+                    // TODO : think about formPar
+                    //
+                }
+                else if (globalVar)
+                {
+                    varObj.setAdr(TabExt.staticDataCnt++);
                 }
             }
             else
@@ -889,18 +1054,64 @@ BracketEpsilon ::=
 /************************* ClassDecl **************************/
 /************************************************************/
 ClassDecl ::=
-        CLASS
-        IDENT:nameOfClass
+    CLASS
+    IDENT:nameOfClass
+    {:
+        isInClass = true;
+        // TODO : add double check
+        if (find_double_and_report_search(nameOfClass, nameOfClassleft, "Ime je vec deklarisano u okruzujucem opsegu"))
+        {
+            // TODO : test
+            curObjWrapperClass = (new ObjResultWrapper()).setSemanticError(true);
+            curObjWrapperClass.setSemanticError(true);
+        }
+        else
+        {
+            Obj obj = Tab.insert(Obj.Type, nameOfClass, new Struct(Struct.Class));
+            curObjWrapperClass = new ObjResultWrapper(obj, false);
+        }
+    :}
+	ExtendsTypeEpsilon
+    {:
+        // TODO extending
+    :}
+	BRACE_LEFT
+    {:
+        // TODO : add check for existance.
+        //
+        Tab.openScope();
+        //initVirtualFunctionTablePointer();
+        Tab.insert(Obj.Fld, VFT_POINTER_NAME, Tab.intType);
 
-		ExtendsTypeEpsilon
-		BRACE_LEFT
-		FieldDeclListEpsilon
-        BraceMethodDeclListEpsilonEpsilon
-		BRACE_RIGHT
-        {:
-            parser.log.debug("Prepoznata CLASS", null);
-        :}
-        ;
+    :}
+	FieldDeclListEpsilon
+    {:
+
+        // TODO : add check of semantic error.
+    :}
+    BraceMethodDeclListEpsilonEpsilon
+    {:
+        // TODO : check of semantic error
+
+
+    :}
+
+	BRACE_RIGHT
+    {:
+        Tab.chainLocalSymbols(curObjWrapperClass.getObj().getType());
+        Tab.closeScope();
+        Tab.insert(Obj.Type, curObjWrapperClass.getObj().getName(), curObjWrapperClass.getObj().getType());
+
+        if (listVFTAdresses.size() == 0)
+        {
+            Code.mainPc = Code.pc;
+        }
+        initVirtualFunctionTable(curObjWrapperClass.getObj(), listVFTAdresses);
+
+        isInClass = false;
+        parser.log.debug("Prepoznata klasa", null);
+    :}
+    ;
 
 ExtendsTypeEpsilon ::=
             EXTENDS Type
@@ -920,7 +1131,17 @@ FieldDeclList ::=
             ;
 
 
-FieldDecl ::= Type FieldExprList SEMI_COLUMN;
+FieldDecl ::=
+    Type:type
+    {:
+        curFieldType = type;
+        fieldVar = true;
+    :}
+    FieldExprList SEMI_COLUMN
+    {:
+        fieldVar = false;
+    :}
+    ;
 FieldExprList ::=
             FieldExprList COMMA VarExpr
             |
@@ -937,6 +1158,19 @@ BraceMethodDeclListEpsilonEpsilon ::=
 /************************************************************/
 MethodDecl ::=
         StaticEpsilon:isStatic
+        {:
+            if (!isInClass)
+            {
+                // TODO add semantic error for static in global function
+            }
+            else
+            {
+                if (!isStatic)
+                {
+                    addThis = true;
+                }
+            }
+        :}
 
         ReturnType:retType
         {:
@@ -954,6 +1188,18 @@ MethodDecl ::=
         PAR_LEFT
         {:
             Tab.openScope();
+            if (addThis)
+            {
+                Obj varObj = Tab.insert(Obj.Var, "this", curObjWrapperClass.getObj().getType());
+                varObj.setAdr(0);
+                addThis = false;
+
+            }
+            else
+            {
+                setMethodStatic(TabExt.curMethod);
+            }
+
         :}
         FormParsEpsilonParRight
         {:
@@ -976,7 +1222,14 @@ MethodDecl ::=
             if (nameOfMethod.equals(METHOD_ENTRY_NAME))
             {
                 TabExt.doesMainExist = true;
-                Code.mainPc = TabExt.curMethod.getAdr();
+                if (listVFTAdresses.size() == 0)
+                {
+                    Code.mainPc = TabExt.curMethod.getAdr();
+                }
+                else
+                {
+                    Code.fixup(listVFTAdresses.getLast());
+                }
 
             }
 
@@ -1336,6 +1589,10 @@ Statement ::=
                         Code.put(Code.pop);
                         Code.put(Code.pop);
                     }
+                    else if (expr.isField())
+                    {
+                        Code.put(Code.pop);
+                    }
                 }
                 else
                 {
@@ -1452,6 +1709,8 @@ DesignatorIncOrDec ::=
             if (!designator.isSemanticError() &&
                 designator.isLeftValue() && designator.getObj().getType().equals(Tab.intType))
                 {
+                    // right value is not needed
+                    // because a i a[i] is good because there is no inc
                     Code.loadConst(1);
                     Code.put(op);
                     Code.store(designator.getObj());
@@ -1480,11 +1739,28 @@ DesignatorFuncCall ::=
         Designator:func
         PAR_LEFT ActParsEpsilon PAR_RIGHT
         {:
-            Code.put(Code.call);
-            // Because Code.call is put then pc  = pc + 1.
-            //
-            int adr = func.getObj().getAdr() - Code.pc + 1;
-            Code.put2(adr);
+            if (func.isVirtual())
+            {
+                String funcName = func.getObj().getName();
+                // VFT_POINTER
+                Code.put(Code.getfield);
+                Code.put2(0);
+                Code.put(Code.invokevirtual);
+                for (int idx = 0; idx < funcName.length(); idx ++)
+                {
+                    Code.put4((int)funcName.charAt(idx));
+                }
+                Code.put4(-1);
+
+            }
+            else
+            {
+                Code.put(Code.call);
+                // Because Code.call is put then pc  = pc + 1.
+                //
+                int adr = func.getObj().getAdr() - Code.pc + 1;
+                Code.put2(adr);
+            }
             RESULT = func;
         :}
         ;
@@ -1505,7 +1781,7 @@ AssingmentStatement ::=
             }
             else
             {
-                if (dest.isArrayElement() && op == OP_ASSIGN_CODE)
+                if (dest.hasAdditionalParsOnStack() && op == OP_ASSIGN_CODE)
                 {
                     // a i a[i]
                     Code.put(Code.pop);
@@ -1520,6 +1796,8 @@ AssingmentStatement ::=
             if (!dest.isSemanticError() && dest.isLeftValue() &&
                 !expr.isSemanticError())
             {
+                expr.generateRightValue();
+                /*
                 if (expr.isArrayElement())
                 {
                         // a i a[i]
@@ -1532,6 +1810,7 @@ AssingmentStatement ::=
                     Code.put(Code.pop);
                     // a[i]
                 }
+                */
 
                 if (op != OP_ASSIGN_CODE)
                 {
@@ -1540,24 +1819,9 @@ AssingmentStatement ::=
                     // Nista za dalje vrednosti.
                     Code.put(op);
                 }
-                else
-                {
-                    if (dest.isArrayElement())
-                    {
-                        /*
-                        // a i a[i] nesto
-                        Code.put(Code.dup_x1);
-                        // a i nesto a[i] nesto
-                        Code.put(Code.pop);
-                        // a i nesto a[i]
-                        Code.put(Code.pop);
-                        // a i nesto
-                        */
-                    }
-                }
                 Code.store(dest.getObj());
                 if ( (op == OP_ASSIGN_CODE)
-                    && !dest.isArrayElement())
+                    && !dest.hasAdditionalParsOnStack())
                 {
                     Code.put(Code.pop);
                 }
@@ -1579,34 +1843,25 @@ AssingmentStatementOrErrorSemi ::=
             }
             else
             {
-                if (dest.isArrayElement() && op == OP_ASSIGN_CODE)
+                if ( dest.hasAdditionalParsOnStack() && op == OP_ASSIGN_CODE)
                 {
                     // a i a[i]
+                    // c c.x
                     Code.put(Code.pop);
                     // a i
+                    // c
                 }
             }
 
         :}
-        AssignOpExpOrErrorSemi : expr
+        ExpOrErrorSemi : expr
         {:
             // Check error.
             //
             if (!dest.isSemanticError() && dest.isLeftValue() &&
                 (expr != null) &&!expr.isSemanticError())
             {
-                if (expr.isArrayElement())
-                {
-                        // a i a[i]
-                    Code.put(Code.dup_x2);
-                    // a[i] a i a[i]
-                    Code.put(Code.pop);
-                    // a[i] a i
-                    Code.put(Code.pop);
-                    // a[i] a
-                    Code.put(Code.pop);
-                    // a[i]
-                }
+                expr.generateRightValue();
 
                 if (op != OP_ASSIGN_CODE)
                 {
@@ -1615,24 +1870,9 @@ AssingmentStatementOrErrorSemi ::=
                     // Nista za dalje vrednosti.
                     Code.put(op);
                 }
-                else
-                {
-                    if (dest.isArrayElement())
-                    {
-                        /*
-                        // a i a[i] nesto
-                        Code.put(Code.dup_x1);
-                        // a i nesto a[i] nesto
-                        Code.put(Code.pop);
-                        // a i nesto a[i]
-                        Code.put(Code.pop);
-                        // a i nesto
-                        */
-                    }
-                }
                 Code.store(dest.getObj());
                 if ( (op == OP_ASSIGN_CODE)
-                    && !dest.isArrayElement())
+                    && !dest.hasAdditionalParsOnStack())
                 {
                     Code.put(Code.pop);
                 }
@@ -1667,7 +1907,10 @@ ExpOrErrorSemi ::=
 /******************* ActPars  *******************************/
 /************************************************************/
 ActPars ::=
-        Expr
+        Expr:expr
+        {:
+            expr.generateRightValue();
+        :}
         CommaExprListEpsilon
         ;
 
@@ -1682,7 +1925,10 @@ CommaExprList ::=
         CommaExpr
         ;
 CommaExpr ::=
-        COMMA Expr
+        COMMA Expr:expr
+        {:
+            expr.generateRightValue();
+        :}
         ;
 
 /******************* Condition  *****************************/
@@ -1863,14 +2109,18 @@ AddopRightTerm ::=
                     Code.put(Code.dup_x2);
                     // sum a i sum
                 }
+                else if (leftTerm.isField())
+                {
+                    // c sum
+                    Code.put(Code.dup_x1);
+                    // sum c sum
+                }
                 else
                 {
                     Code.put(Code.dup);
                 }
                 // sum
                 Code.store(leftTerm.getObj());
-                // TO DO : ARray class and other shit.
-                //
 
                 leftTerm.setRightValue(true);
                 RESULT = leftTerm;
@@ -1945,6 +2195,10 @@ MullopRightFactor ::=
                     if (leftFactor.isArrayElement())
                     {
                         Code.put(Code.dup_x2);
+                    }
+                    else if (leftFactor.isField())
+                    {
+                        Code.put(Code.dup_x1);
                     }
                     else
                     {
@@ -2030,9 +2284,10 @@ Factor ::=
                                          exprWrapleft,
                                          "Tip izraza kod NEW operatora sa nizom mora da bude int"))
                 {
-
+                    exprWrap.generateRightValue();
                     Code.put(Code.newarray);
                     // TODO: For classes which are non word alligned,
+                    // TODO : add
                     // alloc using char
                     //
                     if (type.getObj().getType().equals(Tab.charType))
@@ -2053,18 +2308,21 @@ Factor ::=
             }
             else
             {
-                if (!type.isSemanticError())
+                if (!type.isSemanticError()
+                && (type.getObj().getKind() == Obj.Type)
+                && (type.getObj().getType().getKind() == Struct.Class))
                 {
-                    // TODO : if it's class alloc as it is supposed to be.
+                    Code.put(Code.new_);
+                    Code.put2(type.getObj().getType().getNumberOfFields() * INT_SIZE);
+                    // adr
+                    Code.put(Code.dup);
+                    // adr adr
+                    Code.loadConst(type.getObj().getAdr());
+                    // adr adr val
+                    // TODO add check if class is not initialized.
                     //
-                    if (type.getObj().getType().equals(Tab.charType))
-                    {
-                        Code.put(CHAR_SIZE);
-                    }
-                    else
-                    {
-                        Code.put(INT_SIZE);
-                    }
+                    Code.store(type.getObj().getType().getMembersTable().searchKey(VFT_POINTER_NAME));
+                    RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", type.getObj().getType()), true);
                 }
                 else
                 {
@@ -2175,48 +2433,108 @@ DotIdentOrBracketExprList ::=
         |
         DotIdentOrBracketExpr:objWrapper
         {:
+
             RESULT = objWrapper;
         :}
         ;
 DotIdentOrBracketExpr ::=
-        DOT IDENT
-        |
-        BRACKET_LEFT Expr:expr BRACKET_RIGHT
-        {:
-            if (!curObjWrappFieldOrElem.isSemanticError()
-            && !expr.isSemanticError()
-            && check_type_and_report(expr.getObj(), Tab.intType,
-            exprleft, " indeks niza mora bude tipa int")
-            )
-                if (curObjWrappFieldOrElem.isArray())
+    DOT IDENT:memberName
+    {:
+        if (!curObjWrappFieldOrElem.isSemanticError())
+        {
+            if (curObjWrappFieldOrElem.isClassType())
+            {
+                Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
+                if ( (obj == null)
+                ||
+                ((obj.getKind() != Obj.Meth)
+                || (!isMethodStatic(obj))) )
                 {
-                    Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
-                    Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
-                    curObjWrappFieldOrElem.setObj(obj);
-                    Code.put(Code.dup2);
-                    Code.load(obj);
-                    RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
+                    // TODO ispisi
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
                 }
                 else
                 {
-                    semantic_error("Kad se koriste [] sa leve strane mora biti niz", exprleft);
+                    curObjWrappFieldOrElem = new ObjResultWrapper(obj, true);
+
+                    RESULT = curObjWrappFieldOrElem;
+                }
+            }
+            else if (curObjWrappFieldOrElem.isClass())
+            {
+                Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
+                if ( (obj == null) || ((obj.getKind() != Obj.Fld) && (obj.getKind() != Obj.Meth) ) )
+                {
                     RESULT = curObjWrappFieldOrElem.setSemanticError(true);
                 }
+                else
+                {
+                    if (obj.getKind() == Obj.Fld)
+                    {
+                        // x
+                        Code.put(Code.dup);
+                        // x x
+                        Code.load(obj);
+                        // x x.i
+
+                        curObjWrappFieldOrElem = new ObjResultWrapper(obj, false);
+                        RESULT = curObjWrappFieldOrElem;
+                    }
+                    else
+                    {
+                        curObjWrappFieldOrElem = new ObjResultWrapper(obj, false);
+                        curObjWrappFieldOrElem.setVirtual(true);
+                        RESULT = curObjWrappFieldOrElem;
+                    }
+                }
+            }
             else
             {
                 RESULT = curObjWrappFieldOrElem.setSemanticError(true);
             }
+        }
+        else
+        {
+            RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+        }
+    :}
+    |
+    BRACKET_LEFT Expr:expr BRACKET_RIGHT
+    {:
+        if (!curObjWrappFieldOrElem.isSemanticError()
+        && !expr.isSemanticError()
+        && check_type_and_report(expr.getObj(), Tab.intType,
+        exprleft, " indeks niza mora bude tipa int")
+        )
+            if (curObjWrappFieldOrElem.isArray())
+            {
+                Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
+                Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
+                curObjWrappFieldOrElem.setObj(obj);
+                Code.put(Code.dup2);
+                Code.load(obj);
+                RESULT = new ObjResultWrapper(obj, false /* RVALUE */);
+            }
+            else
+            {
+                semantic_error("Kad se koriste [] sa leve strane mora biti niz", exprleft);
+                RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+            }
+        else
+        {
+            RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+        }
 
-        :}
-        |
-        BRACKET_LEFT error BRACKET_RIGHT
-        {:
-            parser.report_error("Uspesan oporavak od greske kod indeksa niza,  BRACKET_RIGHT je resio stvar" , null);
-            // TODO test further.
-            //
-            RESULT = new ObjResultWrapper().setSyntaxError(true);
-        :}
-        ;
+    :}
+    |
+    BRACKET_LEFT error BRACKET_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod indeksa niza,  BRACKET_RIGHT je resio stvar" , null);
+        // TODO test further.
+        //
+        RESULT = new ObjResultWrapper().setSyntaxError(true);
+    :}
+    ;
 
 
 /**********************   AssignOp    ****************************/

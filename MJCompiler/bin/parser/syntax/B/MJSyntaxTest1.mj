@@ -1,0 +1,88 @@
+program Test
+
+const bool t = true;
+bool Boolean;
+
+{
+
+    void test(int a, int b)
+    {
+            print(a);
+            print(b);
+            if ( a > b  )
+                if (a <= b)
+                    a ++;
+                else
+                    a --;
+            print('a');
+            print(':');
+            print(a);
+
+    }
+
+    int rekurzija(int n)
+    {
+        if (n == 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return n * rekurzija(n - 1);
+        }
+    }
+
+    char test2(char c)
+    {
+        return c;
+    }
+
+	void main()
+	int t, u, i, j;
+    char m; {
+        {
+
+        for (i = 0; i < 3; i ++)
+        {
+            print('n');
+            if (i == 1)
+            {
+                continue;
+            }
+            if (i == 2)
+            {
+                break;
+            }
+
+            for (j = 0; j < 2; j ++)
+            {
+                if (j == 0)
+                    continue;
+                print('a');
+            }
+        }
+        Boolean = true;
+        print(Boolean);
+        if (Boolean)
+        {
+            print('u');
+        }
+        t = 3;
+        u = 2;
+        print('r');
+        print(rekurzija(t));
+        print('r');
+        print(rekurzija(2));
+		test(t, u);
+        test2('b');
+        //print('v');
+        print('r');
+        //t = test2('a');
+        m = test2('a');
+        print(test2('b'));
+        t = (t);
+        }
+
+	}
+
+}

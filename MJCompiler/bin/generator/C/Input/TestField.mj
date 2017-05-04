@@ -8,11 +8,39 @@ class K1
 	char c, cNiz[];
 	bool b, bNiz[];
 	{
+			void t() { 
+			print('t');
+			print('u');
+		print(i);
+		print('k');
+		print(eol); }
+		
+		static int rek(int n)
+		{
+			
+			if (n == 0)
+			{				
+				return 1;
+			}
+			else 
+			{
+				print(n, 2);
+				return n * rek(n-1);
+			} 
+		}
+		
+		void izr(int n)
+		{
+			print('r');
+			print(rek(n));
+			print(eol);
+		}
+		
 		void m() {
 			print('m');
 		}
 		void n(int z)  { print(z); } 
-		int t() {}
+
 		K1 R() {}
 		K1 Z1(K1 k, int t, int r) {}
 		static void test() 
@@ -31,7 +59,9 @@ class K1
 		int i;
 	{
 		k1 = new K1;
-		k1.i = 1;
+		k1.izr(5);
+		
+		k1.i = 4;
 		k1.c = 'a';
 		k1.b = true;
 		
@@ -44,15 +74,41 @@ class K1
 			kArr[i].i = i;
 			
 		for (i = 0; i < 3; i ++)
+		{
+			print('a');
 			print(kArr[i].i);
-		
+			print(eol);
+		}
 		print(k1.i);
 		print(k1.c);
 		print(k1.b);
+		print('s');print('t');
 		K1.test();
-		print(K1.R1(1));
-		//print(k1._vftPointer);
+		print(eol);
+		
+		print('r');
+		print('v');
+		print('a');
+		print('l');
+		print(K1.R1(3));
+		print(eol);
+		
+		print('a');
+		print('v');
+		print('f');
+		print('t');
+		//print(ord(k1._vftPointer));
+		print(eol);
+		
 		k1.m();
-		k1.n(1);
+		print(eol);
+		
+		print('p');
+		print('a');
+		print('s');
+		print('s');
+		k1.n(5);
+		k1.t();
+		
 	}
 }

@@ -10,7 +10,7 @@ SRC=$(ROOT)src/
 PACKAGE=rs/ac/bg/etf/pp1/
 SRC_UTIL=util
 #Flags for unit tests
-FLAG_TYPE=gen
+FLAG_TYPE=syn
 FLAG_RUN_PREV=false
 FLAG_RUN_BUILD=true
 FLAG_TEST_NUM=-1

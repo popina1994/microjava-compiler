@@ -55,5 +55,8 @@ char promChar1, nizChar1[], promChar2, nizChar2[];
 		nizInt2[2] = nizInt2[2] + nizInt2[2];
 		print(nizInt2[2], 2);
 		
+		nizInt2[2] = (nizInt2[2] + nizInt2[2] + 1) * nizInt2[2];
+		print(nizInt2[2], 3 );
+		
 	}
 }

@@ -1,0 +1,8 @@
+program Test
+class K1
+{
+	int i, tNiz[];
+	char c, cNiz[];
+	bool b, bNiz[];
+	 
+}

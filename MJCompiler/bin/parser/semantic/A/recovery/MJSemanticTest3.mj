@@ -1,0 +1,16 @@
+program Test
+const int r = 1;
+{
+	void main()
+	int t, z[];
+	{		
+		read(z);
+		print(z);
+		read(z);
+		print(z);
+		z = new int[3];
+			
+		read(r);
+		z = 'a' + 1;
+	}
+}

@@ -6,9 +6,11 @@ import org.apache.log4j.*;
 import java.io.*;
 import java.util.LinkedList;
 import java.util.Collection;
+import java.util.Iterator;
 import rs.etf.pp1.symboltable.Tab;
 import rs.etf.pp1.symboltable.concepts.*;
 import rs.etf.pp1.mj.runtime.*;
+import rs.etf.pp1.symboltable.structure.HashTableDataStructure;
 import rs.etf.pp1.symboltable.visitors.SymbolTableVisitor;
 
 parser code {:
@@ -412,7 +414,7 @@ parser code {:
 
     public void semantic_error(String msg, int line)
     {
-        semantic_error(msg + "Linija:" + line);
+        semantic_error(msg + "Linija:" + line + ".");
     }
 
     // Overrideovana MJParser funkcija.
@@ -463,8 +465,52 @@ parser code {:
 
     boolean check_type_and_report(Obj obj, Struct type, int line, String additionalMessage)
     {
-        if (!obj.getType().equals(type) && ( additionalMessage != null) ){
-            semantic_error(additionalMessage + ". Tipovi nisu kompatibilni.", line);
+        if (additionalMessage == null)
+        {
+            additionalMessage = "";
+        }
+        if (!obj.getType().equals(type)) {
+            semantic_error(additionalMessage + ". Tipovi nisu isti.", line);
+            return false;
+        }
+        return true;
+    }
+
+    boolean check_type_and_report(Obj obj, LinkedList<Struct> listType, int line, String additionalMessage)
+    {
+        if (additionalMessage == "")
+        {
+            additionalMessage = "";
+        }
+
+        boolean found = false;
+
+        for (Struct type : listType)
+        {
+            if (obj.getType().equals(type))
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            semantic_error(additionalMessage + "." + obj.getName() + " ne slaze se ni sa jednim od tipova.", line);
+            return false;
+        }
+        return true;
+    }
+
+    boolean check_obj_kind_and_report(Obj obj, int kind, int line, String additionalMessage)
+    {
+        if (additionalMessage == null)
+        {
+            additionalMessage = "";
+        }
+
+        if (obj.getKind() != kind){
+            semantic_error(additionalMessage + ". Nije odgovarajuce vrste.", line);
             return false;
         }
         return true;
@@ -540,6 +586,27 @@ parser code {:
         obj.setFpPos(1);
     }
 
+    static void setParentClass(Obj child, Obj parent)
+    {
+        HashTableDataStructure symbolDataStructure = new HashTableDataStructure();
+        symbolDataStructure.insertKey(parent);
+        child.setLocals(symbolDataStructure);
+    }
+
+    static Obj getParentClass(Obj child)
+    {
+        Collection<Obj> locals = child.getLocalSymbols();
+        if (!locals.isEmpty())
+        {
+            Iterator<Obj> it = locals.iterator();
+            return it.next();
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     void initVirtualFunctionTable(Obj objType, LinkedList<Integer> listVFTAdresses)
     {
         Struct type = objType.getType();
@@ -569,6 +636,48 @@ parser code {:
         listVFTAdresses.addLast(Code.pc - 2);
     }
 
+    public void copyFieldsAndMethodsFromParent(Obj parentClass, Obj childClass)
+    {
+        Struct parentType = parentClass.getType();
+        Struct childType = childClass.getType();
+        Collection<Obj> parentMembers = parentType.getMembers();
+
+        for (Obj it : parentMembers)
+        {
+            if (it.getKind() == Obj.Fld)
+            {
+                Tab.insert(it.getKind(), it.getName(), it.getType());
+            }
+            else if ( (it.getKind() == Obj.Meth) && !isMethodStatic(it))
+            {
+                Obj methObj = Tab.insert(it.getKind(), it.getName(), it.getType());
+                methObj.setAdr(it.getAdr());
+
+                Tab.openScope();
+                for (Obj itPars : it.getLocalSymbols())
+                {
+                    if (itPars.getName()    .equals("this"))
+                    {
+                        Tab.insert(itPars.getKind(), itPars.getName(), childType);
+                    }
+                    else
+                    {
+                        Tab.insert(itPars.getKind(), itPars.getName(), itPars.getType());
+                    }
+                }
+                Tab.chainLocalSymbols(methObj);
+                Tab.closeScope();
+            }
+        }
+
+    }
+
+    public void extendFromParentClass(Obj childClass, Obj parentClass)
+    {
+        setParentClass(childClass, parentClass);
+        copyFieldsAndMethodsFromParent(parentClass, childClass);
+    }
+
 :}
 
 action code {:
@@ -596,7 +705,6 @@ action code {:
     LinkedList<Integer> listVFTAdresses = new LinkedList<Integer>();
     LinkedList<Boolean> listIsVirtualFunction = new LinkedList<Boolean>();
     Integer forLastDesigantorBeginAddress = null;
-
 
     boolean globalVar = false;
     boolean localVar = false;
@@ -644,7 +752,8 @@ non terminal GlobalVarExprList, GlobalVarExprCommaList;
 non terminal ObjResultWrapper VarExprOrErrorSemi;
 non terminal ObjResultWrapper VarExprOrErrorComma;
 non terminal Boolean BracketEpsilon;
-non terminal ClassDecl, ExtendsTypeEpsilon, FieldDeclListEpsilon, FieldDeclList, FieldDecl, FieldExprList, BraceMethodDeclListEpsilonEpsilon;
+non terminal ObjResultWrapper ExtendsTypeEpsilon;
+non terminal ClassDecl, FieldDeclListEpsilon, FieldDeclList, FieldDecl, FieldExprList, BraceMethodDeclListEpsilonEpsilon;
 
 non terminal MethodDecl;
 non terminal Boolean StaticEpsilon;
@@ -1080,23 +1189,30 @@ ClassDecl ::=
             curObjWrapperClass = new ObjResultWrapper(obj, false);
         }
     :}
-	ExtendsTypeEpsilon
+	ExtendsTypeEpsilon:extendsType
     {:
-        // TODO extending
+        if (!curObjWrapperClass.isSemanticError())
+        {
+            if (extendsType == null)
+            {
+                Tab.openScope();
+                Tab.insert(Obj.Fld, VFT_POINTER_NAME, Tab.intType);
+            }
+            else if (!extendsType.isSemanticError())
+            {
+                Tab.openScope();
+                extendFromParentClass( curObjWrapperClass.getObj(), extendsType.getObj());
+            }
+            else
+            {
+                curObjWrapperClass.setSemanticError(true);
+            }
+        }
     :}
 	BRACE_LEFT
-    {:
-        // TODO : add check for existance.
-        //
-        Tab.openScope();
-        Tab.insert(Obj.Fld, VFT_POINTER_NAME, Tab.intType);
-
-    :}
 	FieldDeclListEpsilon
     {:
         Tab.chainLocalSymbols(curObjWrapperClass.getObj().getType());
-        //Tab.closeScope();
-        //Tab.openScope();
         // TODO : add check of semantic error.
     :}
     BraceMethodDeclListEpsilonEpsilon
@@ -1108,7 +1224,6 @@ ClassDecl ::=
 
 	BRACE_RIGHT
     {:
-        //Tab.chainLocalSymbols(curObjWrapperClass.getObj().getType());
         Tab.closeScope();
         Tab.insert(Obj.Type, curObjWrapperClass.getObj().getName(), curObjWrapperClass.getObj().getType());
 
@@ -1124,10 +1239,23 @@ ClassDecl ::=
     ;
 
 ExtendsTypeEpsilon ::=
-            EXTENDS Type
-            |
-            /* epsilon */
-            ;
+    EXTENDS Type:type
+    {:
+        if ( (!type.isSemanticError())
+            &&(type.getObj().getKind() != Obj.Type)
+            && (type.getObj().getType().getKind() != Struct.Class) )
+        {
+            semantic_error("Tip " + type.getObj().getName() + " nije tipa klase.", typeleft);
+            type.setSemanticError(true);
+        }
+        RESULT =  type;
+    :}
+    |
+    {:
+        RESULT = null;
+    :}
+    /* epsilon */
+    ;
 
 FieldDeclListEpsilon ::=
             FieldDeclList
@@ -1226,8 +1354,6 @@ MethodDecl ::=
             {
                 Tab.chainLocalSymbols(TabExt.curMethod);
             }
-            // TODO : Sumnjivo mi ovo nesto, mozda ranije treba (da bi se spremio stek)
-            //
             TabExt.curMethod.setAdr(Code.pc);
             if (nameOfMethod.equals(METHOD_ENTRY_NAME))
             {
@@ -1430,125 +1556,129 @@ Type ::=
 /************************************************************/
 
 Statement ::=
-        DesignatorStatementOrAssignErrorSemi
-        {:
-            parser.log.debug("Prepoznata STATEMENT", null);
-        :}
-        |
-        // TODO : add check for type of expression.
+    DesignatorStatementOrAssignErrorSemi:st
+    {:
+        parser.log.debug("Prepoznata STATEMENT", null);
+    :}
+    |
+    // TODO : add check for type of expression.
+    //
+    IF PAR_LEFT IfConditionParRight
+    {:
+        // FALSE.
         //
-        IF PAR_LEFT IfConditionParRight
-        {:
-            // FALSE.
-            //
-            Code.put(Code.const_n);
-            Code.putFalseJump(Code.ne, 0);
-            int adrConditionFalse = Code.pc - 2;
-            listAdrIfConditionFalse.addLast(adrConditionFalse);
-        :}
-        Statement
-        {:
+        Code.put(Code.const_n);
+        Code.putFalseJump(Code.ne, 0);
+        int adrConditionFalse = Code.pc - 2;
+        listAdrIfConditionFalse.addLast(adrConditionFalse);
+    :}
+    Statement
+    {:
 
-            Code.putJump(0);
-            Code.fixup(listAdrIfConditionFalse.removeLast());
-            int adrConditionTrue = Code.pc - 2;
-            listAdrIfConditionTrue.addLast(adrConditionTrue);
-        :}
-        ElseStatementEpsilon
-        {:
+        Code.putJump(0);
+        Code.fixup(listAdrIfConditionFalse.removeLast());
+        int adrConditionTrue = Code.pc - 2;
+        listAdrIfConditionTrue.addLast(adrConditionTrue);
+    :}
+    ElseStatementEpsilon
+    {:
 
-            Code.fixup(listAdrIfConditionTrue.removeLast());
-            parser.log.debug("Prepoznat IF", null);
-        :}
-        |
-        FOR PAR_LEFT DesignatorStatementOrAssign SEMI_COLUMN
-        {:
-            listAdrForCondition.addLast(Code.pc);
-        :}
-        ForConditionSemi
-        {:
-            Code.put(Code.const_n);
-            Code.putFalseJump(Code.ne, 0);
-            int adrConditionFalse = Code.pc - 2;
-            listAdrForConditionFalse.addLast(adrConditionFalse);
+        Code.fixup(listAdrIfConditionTrue.removeLast());
+        parser.log.debug("Prepoznat IF", null);
+    :}
+    |
+    FOR PAR_LEFT DesignatorStatementOrAssign SEMI_COLUMN
+    {:
+        listAdrForCondition.addLast(Code.pc);
+    :}
+    ForConditionSemi
+    {:
+        Code.put(Code.const_n);
+        Code.putFalseJump(Code.ne, 0);
+        int adrConditionFalse = Code.pc - 2;
+        listAdrForConditionFalse.addLast(adrConditionFalse);
 
 
-            forLastDesigantorBeginAddress = Code.pc;
-        :}
-        DesignatorStatementOrAssignOrErrorParRight
-        {:
-            pushOnCodeStack(listSavedCode, forLastDesigantorBeginAddress);
-            listOfListOfContinuesInFor.addLast(new LinkedList<Integer>());
-            listOfListOfBreaksInFor.addLast(new LinkedList<Integer>());
-        :}
+        forLastDesigantorBeginAddress = Code.pc;
+    :}
+    DesignatorStatementOrAssignOrErrorParRight
+    {:
+        pushOnCodeStack(listSavedCode, forLastDesigantorBeginAddress);
+        listOfListOfContinuesInFor.addLast(new LinkedList<Integer>());
+        listOfListOfBreaksInFor.addLast(new LinkedList<Integer>());
+    :}
 
 
 
-        Statement
-        {:
-            updateAdresses(listOfListOfContinuesInFor);
-            popFromCodeStack(listSavedCode);
+    Statement
+    {:
+        updateAdresses(listOfListOfContinuesInFor);
+        popFromCodeStack(listSavedCode);
 
-            int adrCondition = listAdrForCondition.removeLast();
-            Code.putJump(adrCondition);
+        int adrCondition = listAdrForCondition.removeLast();
+        Code.putJump(adrCondition);
 
-            updateAdresses(listOfListOfBreaksInFor);
-            Code.fixup(listAdrForConditionFalse.removeLast());
-        :}
-        |
-        FOR error SEMI_COLUMN ForCondition SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
-        |
-        FOR DesignatorStatementOrAssign SEMI_COLUMN error SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
-        |
-        FOR DesignatorStatementOrAssign SEMI_COLUMN ForCondition SEMI_COLUMN error PAR_RIGHT
-        |
-        FOR error SEMI_COLUMN error SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
-        |
-        FOR error SEMI_COLUMN ForCondition SEMI_COLUMN error PAR_RIGHT
-        |
-        FOR DesignatorStatementOrAssign SEMI_COLUMN error SEMI_COLUMN error PAR_RIGHT
-        |
-        FOR error SEMI_COLUMN error SEMI_COLUMN error PAR_RIGHT
-        |
-        FOR error SEMI_COLUMN error PAR_RIGHT
-        |
-        FOR error PAR_RIGHT
-        |
-        BREAK SEMI_COLUMN
-        {:
-            // Ne mora 0. Moze sta god.
-            //
-            Code.putJump(0);
-            int adr = Code.pc - 2;
-            listOfListOfBreaksInFor.getLast().addLast(adr);
-            parser.log.debug("Prepoznat BREAK", null);
-        :}
-        |
-        CONTINUE SEMI_COLUMN
-        {:
-            Code.putJump(0);
-            int adr = Code.pc - 2;
-            listOfListOfContinuesInFor.getLast().addLast(adr);
-            parser.log.debug("Prepoznat CONTINUE", null);
-        :}
-        |
-        RETURN ExprEpsilon SEMI_COLUMN
-        {:
-            // TODO : return check semantic.
-            // Should exist, are types ok...
-            //
-            Code.put(Code.exit);
-            Code.put(Code.return_);
+        updateAdresses(listOfListOfBreaksInFor);
+        Code.fixup(listAdrForConditionFalse.removeLast());
+    :}
+    |
+    FOR error SEMI_COLUMN ForCondition SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
+    |
+    FOR DesignatorStatementOrAssign SEMI_COLUMN error SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
+    |
+    FOR DesignatorStatementOrAssign SEMI_COLUMN ForCondition SEMI_COLUMN error PAR_RIGHT
+    |
+    FOR error SEMI_COLUMN error SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
+    |
+    FOR error SEMI_COLUMN ForCondition SEMI_COLUMN error PAR_RIGHT
+    |
+    FOR DesignatorStatementOrAssign SEMI_COLUMN error SEMI_COLUMN error PAR_RIGHT
+    |
+    FOR error SEMI_COLUMN error SEMI_COLUMN error PAR_RIGHT
+    |
+    FOR error SEMI_COLUMN error PAR_RIGHT
+    |
+    FOR error PAR_RIGHT
+    |
+    BREAK SEMI_COLUMN
+    {:
+        // Ne mora 0. Moze sta god.
+        //
+        Code.putJump(0);
+        int adr = Code.pc - 2;
+        listOfListOfBreaksInFor.getLast().addLast(adr);
+        parser.log.debug("Prepoznat BREAK", null);
+    :}
+    |
+    CONTINUE SEMI_COLUMN
+    {:
+        Code.putJump(0);
+        int adr = Code.pc - 2;
+        listOfListOfContinuesInFor.getLast().addLast(adr);
+        parser.log.debug("Prepoznat CONTINUE", null);
+    :}
+    |
+    RETURN ExprEpsilon SEMI_COLUMN
+    {:
+        // TODO : return check semantic.
+        // Should exist, are types ok...
+        //
+        Code.put(Code.exit);
+        Code.put(Code.return_);
 
-            parser.log.debug("Prepoznat RETURN", null);
-        :}
-        |
-        READ PAR_LEFT Designator:des PAR_RIGHT SEMI_COLUMN
-        {:
-            if (des.isLeftValue() &&
-                (des.getObj().getType().equals(Tab.intType)
-                || (des.getObj().getType().equals(Tab.charType))
-                || (des.getObj().getType().equals(TabExt.boolType))))
+        parser.log.debug("Prepoznat RETURN", null);
+    :}
+    |
+    READ PAR_LEFT Designator:des PAR_RIGHT SEMI_COLUMN
+    {:
+        LinkedList<Struct> listType = new LinkedList<Struct>();
+        listType.addLast(Tab.intType);
+        listType.addLast(Tab.charType);
+        listType.addLast(TabExt.boolType);
+        if (!des.isSemanticError()
+             && check_type_and_report(des.getObj(), listType, desleft, " prvi argument READ-a mora biti char, bool ili int"))
+        {
+            if (des.isLeftValue())
             {
                 Code.put(Code.pop);
                 if (des.getObj().getType().equals(Tab.charType))
@@ -1563,62 +1693,51 @@ Statement ::=
             }
             else
             {
-
+                semantic_error("Parametar kod read mora da bude lvalue. ", desleft);
             }
-            parser.log.debug("Prepoznat READ", null);
-        :}
-        |
-        PRINT PAR_LEFT Expr:expr CommaConstNumEpsilon:numObj PAR_RIGHT SEMI_COLUMN
-        {:
-            Struct typeExpr = expr.getObj().getType();
-            if (typeExpr.equals(TabExt.boolType)
-                || typeExpr.equals(Tab.intType)
-                || typeExpr.equals(Tab.charType))
-                {
-                    // Da li ima dodatnog parametra.
-                    //
-                    if (!numObj.getType().equals(Tab.noType))
-                    {
-                        Code.load(numObj);
-                    }
-                    else
-                    {
-                        Code.loadConst(0);
-                    }
-                    if (typeExpr.equals(Tab.charType))
-                    {
-                        Code.put(Code.bprint);
-                    }
-                    else
-                    {
-                        Code.put(Code.print);
-                    }
-
-                    /*
-                    if (expr.isArrayElement())
-                    {
-                        Code.put(Code.pop);
-                        Code.put(Code.pop);
-                    }
-                    else if (expr.isField())
-                    {
-                        Code.put(Code.pop);
-                    }
-                    */
-                }
-                else
-                {
-                    expr.setSemanticError(true);
-                }
-            RESULT = expr;
-            parser.log.debug("Prepoznat PRINT");
-        :}
-        |
-        BRACE_LEFT StatementListEpsilon BRACE_RIGHT
-        {:
-            parser.log.debug("Prepoznat BLOK", null);
-        :}
-        ;
+        }
+        parser.log.debug("Prepoznat READ", null);
+    :}
+    |
+    PRINT PAR_LEFT:leftVal Expr:expr CommaConstNumEpsilon:numObj PAR_RIGHT SEMI_COLUMN
+    {:
+        LinkedList<Struct> listType = new LinkedList<Struct>();
+        listType.addLast(Tab.intType);
+        listType.addLast(Tab.charType);
+        listType.addLast(TabExt.boolType);
+        if (!expr.isSemanticError()
+        && check_type_and_report(expr.getObj(), listType, leftValleft, " prvi argument PRINT-a mora biti char, bool ili int"))
+        {
+            if (numObj != null)
+            {
+                Code.load(numObj);
+            }
+            else
+            {
+                Code.loadConst(0);
+            }
+            if (expr.getObj().getType().equals(Tab.charType))
+            {
+                Code.put(Code.bprint);
+            }
+            else
+            {
+                Code.put(Code.print);
+            }
+        }
+        else
+        {
+            expr.setSemanticError(true);
+        }
+        RESULT = expr;
+        parser.log.debug("Prepoznat PRINT");
+    :}
+    |
+    BRACE_LEFT StatementListEpsilon BRACE_RIGHT
+    {:
+        parser.log.debug("Prepoznat BLOK", null);
+    :}
+    ;
 
 ElseStatementEpsilon ::=
         ELSE
@@ -1657,7 +1776,7 @@ CommaConstNumEpsilon ::=
         :}
         |
         {:
-            RESULT = new Obj(Obj.Con, "", Tab.noType);
+            RESULT = null;
         :}
         ;
 
@@ -2009,15 +2128,8 @@ OpAndCondFactList ::=
 /************************************************************/
 CondFact ::=
         Expr:expr
-        {:
-            if (!expr.isSemanticError())
-            {
-                //expr.generateRightValue();
-            }
-        :}
         RelOpExprOrEpsilon:compareRight
         {:
-            //
             if (!expr.isSemanticError()
                 && ( (null == compareRight) || (!compareRight.isSemanticError())))
             {
@@ -2319,12 +2431,7 @@ Factor ::=
                                          exprWrapleft,
                                          "Tip izraza kod NEW operatora sa nizom mora da bude int"))
                 {
-                    //exprWrap.generateRightValue();
                     Code.put(Code.newarray);
-                    // TODO: For classes which are non word alligned,
-                    // TODO : add
-                    // alloc using char
-                    //
                     if (type.getObj().getType().equals(Tab.charType))
                     {
                         Code.put(0);
@@ -2343,21 +2450,28 @@ Factor ::=
             }
             else
             {
-                if (!type.isSemanticError()
-                && (type.getObj().getKind() == Obj.Type)
-                && (type.getObj().getType().getKind() == Struct.Class))
+                if (!type.isSemanticError())
                 {
-                    Code.put(Code.new_);
-                    Code.put2(type.getObj().getType().getNumberOfFields() * INT_SIZE);
-                    // adr
-                    Code.put(Code.dup);
-                    // adr adr
-                    Code.loadConst(type.getObj().getAdr());
-                    // adr adr val
-                    // TODO add check if class is not initialized.
-                    //
-                    Code.store(type.getObj().getType().getMembersTable().searchKey(VFT_POINTER_NAME));
-                    RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", type.getObj().getType()), true);
+                    // For sur is type if it's not a semantic error
+                    if  (type.getObj().getType().getKind() == Struct.Class)
+                    {
+                        Code.put(Code.new_);
+                        Code.put2(type.getObj().getType().getNumberOfFields() * INT_SIZE);
+                        // adr
+                        Code.put(Code.dup);
+                        // adr adr
+                        Code.loadConst(type.getObj().getAdr());
+                        // adr adr val
+                        // TODO add check if class is not initialized.
+                        //
+                        Code.store(type.getObj().getType().getMembersTable().searchKey(VFT_POINTER_NAME));
+                        RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", type.getObj().getType()), true);
+                    }
+                    else
+                    {
+                        semantic_error(type.getObj().getName() + " nije tip unutrasnje klase", typeleft);
+                        RESULT = (new ObjResultWrapper()).setSemanticError(true);
+                    }
                 }
                 else
                 {
@@ -2377,6 +2491,7 @@ Factor ::=
 BracketExprEpsilon ::=
             BRACKET_LEFT Expr:expr BRACKET_RIGHT
             {:
+                System.out.print("IZRAZ" + exprleft);
                 RESULT = expr;
             :}
             |

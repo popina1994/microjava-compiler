@@ -10,7 +10,7 @@ public class UnitTestSemantic extends UnitTestParser {
 			"A/correct/MJSemanticTest4.mj",
 			"A/recovery/MJSemanticTest1.mj",
 			"A/recovery/MJSemanticTest2.mj",
-			"C/correct/TestField.mj"
+			"A/recovery/MJSemanticTest3.mj",
 	};
 	private static final String PATH_TEST_SEMANTIC_RUN = PATH_TEST + "/parser/semantic";
 	

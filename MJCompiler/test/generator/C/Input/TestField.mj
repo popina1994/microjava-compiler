@@ -53,10 +53,16 @@ class K1
 		static int R1(int t) { return t + 1;}
 	}
 }
+
+class K2 extends K1
+{
+}
+
 {
 	void main()
 		K1 k1, kArr[];
-		int i;
+		int i; 
+		K2 k2;
 	{
 		k1 = new K1;
 		k1.izr(5);
@@ -97,7 +103,6 @@ class K1
 		print('v');
 		print('f');
 		print('t');
-		//print(ord(k1._vftPointer));
 		print(eol);
 		
 		k1.m();
@@ -109,6 +114,10 @@ class K1
 		print('s');
 		k1.n(5);
 		k1.t();
+		k2 = new K2;
+		//k2.i = 7;
+		//k2.t();
+		//k2.izr(5);
 		
 	}
 }

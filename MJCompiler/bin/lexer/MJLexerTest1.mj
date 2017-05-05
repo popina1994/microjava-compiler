@@ -1,0 +1,37 @@
+program Test2
+{
+
+
+    int fun1()
+    {
+        return 1;
+    }
+
+    void fun2()
+    {
+        print('a');
+    }
+
+    bool fun3()
+    {
+        return true;
+    }
+
+    char fun4()
+    {
+        return 'a';
+    }
+
+    void fun5(int par1, int par2[], char par3, char par4[], bool par5, bool par6[])
+    int intProm, intNiz[];
+    bool boolNiz[], boolProm2;
+    char charProm, charNiz[];
+    {
+
+    }
+
+    void main()
+    {
+
+    }
+}

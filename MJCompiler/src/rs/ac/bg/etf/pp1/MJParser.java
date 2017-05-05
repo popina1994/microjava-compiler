@@ -1081,6 +1081,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
     }
 
 
+
+
     // U slucaju greske.
     //
      @Override
@@ -1176,6 +1178,65 @@ public class MJParser extends java_cup.runtime.lr_parser {
         log.info(msg.toString());
     }
 
+    public boolean typesEqual(Struct type1, Struct type2)
+    {
+        // This is the same as check with name, because all types are on first level.
+        //
+        if (type1 == type2)
+        {
+            return true;
+        }
+
+        if ((type1.getKind() == Struct.Array)
+            && (type2.getKind() == Struct.Array)
+            && typesEqual(type1.getElemType(), type2.getElemType()))
+            {
+                return true;
+            }
+        return false;
+    }
+
+    public boolean typesCompatibile(Struct type1, Struct type2)
+    {
+        if (typesEqual(type1, type2)
+        || (type1.isRefType() && (type2 == Tab.nullType) )
+        || (type2.isRefType() && (type1 == Tab.nullType)) )
+        {
+            return true;
+        }
+        return false;
+    }
+
+    public Struct getParentClass(Struct childClass)
+    {
+        return childClass.getElemType();
+    }
+
+    boolean isDerivedClass(Struct childClass, Struct parentClass)
+    {
+        Struct curClass = null;
+        while ( (curClass = getParentClass(childClass)) != null)
+        {
+            if (typesEqual(curClass, parentClass))
+            {
+                return true;
+            }
+            childClass = curClass;
+        }
+        return false;
+    }
+
+    public boolean typesAssignable(Struct dest, Struct expr)
+    {
+        if (typesEqual(dest, expr)
+            || (dest.isRefType() && expr == Tab.nullType)
+            || isDerivedClass(expr, dest))
+            {
+                return true;
+            }
+        return false;
+    }
+
 
     boolean find_double_and_report_search(String name, int line, String additionalMessage)
     {
@@ -1202,8 +1263,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
         {
             additionalMessage = "";
         }
-        if (!obj.getType().equals(type)) {
-            semantic_error(additionalMessage + ". Tipovi nisu isti.", line);
+        if (!typesEqual(obj.getType(), type)) {
+            semantic_error(additionalMessage + ". Tipovi nisu isti. ", line);
             return false;
         }
         return true;
@@ -1220,7 +1281,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
 
         for (Struct type : listType)
         {
-            if (obj.getType().equals(type))
+            if (typesEqual(obj.getType(), type))
             {
                 found = true;
                 break;
@@ -1266,6 +1327,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
 
         return result;
     }
+
 
 
 
@@ -1321,9 +1383,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
 
     static void setParentClass(Obj child, Obj parent)
     {
-        HashTableDataStructure symbolDataStructure = new HashTableDataStructure();
-        symbolDataStructure.insertKey(parent);
-        child.setLocals(symbolDataStructure);
+        child.getType().setElementType(parent.getType());
     }
 
     static Obj getParentClass(Obj child)
@@ -3531,8 +3591,11 @@ class CUP$MJParser$actions {
 		Integer op = (Integer)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
 
-            if (!designator.isSemanticError() &&
-                designator.isLeftValue() && designator.getObj().getType().equals(Tab.intType))
+        if (!designator.isSemanticError())
+        {
+            if (designator.isLeftValue())
+            {
+                if (check_type_and_report(designator.getObj(), Tab.intType, designatorleft, "Izraz koji se inkrementira/dekrementira mora da bude int"))
                 {
                     // right value is not needed
                     // because a i a[i] is good because there is no inc
@@ -3545,7 +3608,18 @@ class CUP$MJParser$actions {
                 {
                     RESULT = designator.setSemanticError(true);
                 }
-        
+            }
+            else
+            {
+                semantic_error("Izraz koji se inkrementira/dekrementira mora da bude lvalue", designatorleft);
+                RESULT = designator.setSemanticError(true);
+            }
+        }
+        else
+        {
+            RESULT = designator.setSemanticError(true);
+        }
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DesignatorIncOrDec",63, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -3750,11 +3824,9 @@ class CUP$MJParser$actions {
 		int opright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		Integer op = (Integer)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
-            if (dest.isSemanticError() || !dest.isLeftValue())
-            {
-                RESULT = dest.setSemanticError(true);
-            }
-            else
+        if (!dest.isSemanticError())
+        {
+            if (dest.isLeftValue())
             {
                 if ( dest.hasAdditionalParsOnStack() && op == OP_ASSIGN_CODE)
                 {
@@ -3765,8 +3837,15 @@ class CUP$MJParser$actions {
                     // c
                 }
             }
+            else
+            {
+                semantic_error("Levi izraz kod dodele mora da bude lvalue.", destleft);
+                RESULT = dest.setSemanticError(true);
 
-        
+            }
+        }
+
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$25",119, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -3787,13 +3866,14 @@ class CUP$MJParser$actions {
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            // Check error.
-            //
-            if (!dest.isSemanticError() && dest.isLeftValue() &&
-                (expr != null) &&!expr.isSemanticError())
+        // Check error.
+        //
+        if (!dest.isSemanticError() && dest.isLeftValue() &&
+            (expr != null) && !expr.isSemanticError())
+        {
+            if (typesAssignable(dest.getObj().getType(),
+                expr.getObj().getType()))
             {
-                //expr.generateRightValue();
-
                 if (op != OP_ASSIGN_CODE)
                 {
                     // Vrednost na steku nije duplirana jer
@@ -3810,9 +3890,15 @@ class CUP$MJParser$actions {
             }
             else
             {
+                semantic_error("Vrednosti izraza pri dodeli nisu kompatibilne.", destleft);
                 RESULT = dest.setSemanticError(true);
             }
-        
+        }
+        else
+        {
+            RESULT = dest.setSemanticError(true);
+        }
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("AssingmentStatementOrErrorSemi",62, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;

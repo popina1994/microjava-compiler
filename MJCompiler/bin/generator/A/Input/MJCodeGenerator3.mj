@@ -1,0 +1,80 @@
+// Testira operatore i smer izvrsavanja
+//
+program test
+{
+	void main()
+	int broj;
+	{
+		print('O');
+		
+		broj = -1;
+		print(broj, 3);
+		
+		broj = 1;
+		broj = broj + 1;
+		print(broj, 2);
+		
+		broj = 1;
+		broj = broj - 1;
+		print(broj, 2);
+		
+		broj = 1;
+		broj = broj * 2;
+		print(broj, 2);
+		
+		broj = 3;
+		broj = broj / 2;
+		print(broj, 2);
+		
+		broj = 4;
+		broj = broj % 3;
+		print(broj, 2);
+		
+		broj = 1;
+		broj += 1;
+		print(broj, 2);
+		
+		broj = 1;
+		broj -= 1;
+		print(broj, 2);
+		
+		broj = 1;
+		broj *= 2;
+		print(broj, 2);
+		
+		broj = 3;
+		broj /= 2;
+		print(broj, 2);
+		
+		broj = 4;
+		broj %= 3;
+		print(broj, 2);
+		
+		// Smer asocijativnosti.
+		//		
+		
+		print('S', 2);
+		broj = 1;
+
+		broj += broj += 1;
+		print(broj, 2);
+		
+		broj = 1;
+		broj -= broj -= 1;
+		print(broj, 2);
+		
+		broj = 1;
+		broj *= broj *= 2;
+		print(broj, 2);
+		
+		broj = 9;
+		broj /= broj /= 3;
+		print(broj, 2);
+		
+		broj = 9;
+		broj %= broj %= 2;
+		print(broj, 2);
+		
+		
+	}	
+}

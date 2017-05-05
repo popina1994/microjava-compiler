@@ -1,0 +1,29 @@
+// Test301
+
+program test301
+	const int jedan = 1;
+	const int pet = 5;
+
+	int niz[];
+	
+	char nizch[];
+	const char a = 'a';
+	
+{
+	void main()	int bodovi;
+	{
+	
+		
+		
+		nizch = new char[3];
+		nizch[0] = 'b';
+		
+		print(nizch[0]);
+		print(a);
+
+			
+	
+	}
+}
+
+

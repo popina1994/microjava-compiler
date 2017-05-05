@@ -1,16 +1,40 @@
 program Test
 const int r = 1;
+
+class K1
+{
+}
+
+class K2 extends K1
+{
+}
+
+class K3 extends K2
+{
+}
+
 {
 	void main()
 	int t, z[];
+	char c[];
+	K2 k2; K1 k1;
+	K3 k3;
 	{		
+		k2 = k1;
+		k3 = k1;
+		k3 = k2;
 		read(z);
 		print(z);
 		read(z);
 		print(z);
 		z = new int[3];
-			
-		read(r);
-		z = 'a' + 1;
+		r++;
+		z++;
+		r--;
+		z--;
+		r = 1;
+		z = c;
+	
+		
 	}
 }

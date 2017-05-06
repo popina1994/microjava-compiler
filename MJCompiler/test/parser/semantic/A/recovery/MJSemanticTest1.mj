@@ -18,8 +18,8 @@ int v;
 
 {
 	void t(){
+		nesto['int']; 
 		print('i', 2);
-		// Testira dodele (sve treba da prodju).
 		promInt1 = constInt1;
 		print(promInt1, 2);
 

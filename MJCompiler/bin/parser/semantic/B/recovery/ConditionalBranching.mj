@@ -1,0 +1,31 @@
+program test
+
+class K1
+{
+}
+K1 k1, k2;
+int arr[];
+
+{
+	void main()
+		int c;
+		char z;
+	{
+		if (c > z)
+			print(c);
+		if (k1 > k2)
+		{
+			print(1);
+		}
+		
+		if (arr > arr)
+		{
+			print(2);
+		}
+		
+		if (arr)
+		{
+			print(3);
+		}
+	}
+}

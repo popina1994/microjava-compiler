@@ -41,7 +41,6 @@ int niz[];
 		
 		
 		niz = new int[3];
-		print('d');
 		print(len(niz));
 		niz[0] = 1;
 		niz[1] = 2;
@@ -63,9 +62,12 @@ int niz[];
 		if(i == 3) print(4);
 		else print(-4);  
 		
-		read(niz[0]);
-		read(niz[1]);
-		read(niz[2]);
+		niz[0] = 1;
+		niz[1] = 2;
+		niz[2] = 3;
+		//read(niz[0]);
+		//read(niz[1]);
+		//read(niz[2]);
 		print(eol);
 		
 		print(sum (sum(niz[0], niz[1]), niz[2])); 

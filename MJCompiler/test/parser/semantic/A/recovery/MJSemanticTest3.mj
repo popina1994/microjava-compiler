@@ -19,7 +19,8 @@ class K3 extends K2
 	char c[];
 	K2 k2; K1 k1;
 	K3 k3;
-	{		
+{		
+		z['e'] = 1;
 		k2 = k1;
 		k3 = k1;
 		k3 = k2;

@@ -1,0 +1,95 @@
+program test
+
+{
+	void main()
+	int i, t[];
+	{
+		i = 0;
+		for (; ; )
+		{
+			print(i);
+			i++;
+			if (i == 3)
+			{
+				break;
+			}
+		}
+		print(i);
+		
+		print(eol);
+		for (i= 1; ; )
+		{
+			print(i);
+			if (i == 3)
+				break;
+			i++;
+		}
+		print(i);
+		
+		print(eol);
+		for (; i < 5;)
+		{
+			print(i);
+			i++;
+		}
+		print(i);
+		
+		print(eol);
+		i = 1;
+		print('f');
+		for (; ; i ++)
+		{
+			print(i);
+			if (i == 5)
+				break;
+		}
+		print(i);
+		
+		print(eol);
+		for (; i < 10; i ++)
+		{
+			print(i);
+		}
+		
+		print(eol);
+		for (i = 1; ; i ++)
+		{
+			print(i);
+			if (i == 2)
+			{
+				break;
+			}
+		}
+		print(i);
+		
+		print(eol);
+		for (i = 1; i < 7; )
+		{
+			print(i);
+			i++;
+		}
+		print(i);
+		
+		print(eol);
+		for (i = 1; i < 3; i ++)
+		{
+			print(i);
+		}
+		
+		print(eol);
+		for (i = 1; i < 7; i ++)
+		{
+			
+			if (i == 1)
+			{
+				continue;
+			}
+			print(i);
+				
+		}
+		
+		t = new int[3];
+		
+		
+	}
+}

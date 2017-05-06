@@ -63,12 +63,21 @@ public class MJCodeGeneratorTest {
 				testLine = testBufferedReader.readLine();
 			}
 			
-			
 			if ( (lineNotEqual == line - 1) && (cntNotEqual == 1) && (outputLine == null)
 					&& (testLine == null))
 			{
 				equal = true;
 			}
+			
+			if ( ((outputLine != null) && (testLine == null))
+					|| ((outputLine != null) && (testLine == null)))
+			{
+				equal = false;
+			}
+			
+			
+
+
 			
 			
 		}

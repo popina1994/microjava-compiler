@@ -524,6 +524,35 @@ parser code {:
         }
     }
 
+
+
+    ObjResultWrapper find_virtual_method(Struct childClass, Struct parentClass, String methodName)
+    {
+        Obj methodObj  = childClass.getMembersTable().searchKey(methodName);
+        if (methodObj == null)
+        {
+            return null;
+        }
+
+        Obj parentMethodObj = parentClass.getMembersTable().searchKey(methodName);
+        if (parentMethodObj == null)
+        {
+            // Double definition of method.
+            //
+            return (new ObjResultWrapper()).setSemanticError(true);
+        }
+
+        if (parentMethodObj.getKind() != Obj.Meth)
+        {
+            // Double
+            return (new ObjResultWrapper()).setSemanticError(true);
+        }
+
+        return new ObjResultWrapper(methodObj, true);
+    }
+
+
+
     boolean check_type_and_report(Obj obj, Struct type, int line, String additionalMessage)
     {
         if (additionalMessage == null)
@@ -1653,6 +1682,7 @@ Statement ::=
     :}
     ForConditionSemi
     {:
+        //
         Code.put(Code.const_n);
         Code.putFalseJump(Code.ne, 0);
         int adrConditionFalse = Code.pc - 2;
@@ -1741,7 +1771,7 @@ Statement ::=
             if (des.isLeftValue())
             {
                 Code.put(Code.pop);
-                if (des.getObj().getType().equals(Tab.charType))
+                if (typesEqual(des.getObj().getType(), Tab.charType))
                 {
                     Code.put(Code.bread);
                 }
@@ -1759,14 +1789,14 @@ Statement ::=
         parser.log.debug("Prepoznat READ", null);
     :}
     |
-    PRINT PAR_LEFT:leftVal Expr:expr CommaConstNumEpsilon:numObj PAR_RIGHT SEMI_COLUMN
+    PRINT PAR_LEFT Expr:expr CommaConstNumEpsilon:numObj PAR_RIGHT SEMI_COLUMN
     {:
         LinkedList<Struct> listType = new LinkedList<Struct>();
         listType.addLast(Tab.intType);
         listType.addLast(Tab.charType);
         listType.addLast(TabExt.boolType);
         if (!expr.isSemanticError()
-        && check_type_and_report(expr.getObj(), listType, leftValleft, " prvi argument PRINT-a mora biti char, bool ili int"))
+        && check_type_and_report(expr.getObj(), listType, exprleft, " prvi argument PRINT-a mora biti char, bool ili int"))
         {
             if (numObj != null)
             {
@@ -1776,7 +1806,7 @@ Statement ::=
             {
                 Code.loadConst(0);
             }
-            if (expr.getObj().getType().equals(Tab.charType))
+            if (typesEqual(expr.getObj().getType(), Tab.charType))
             {
                 Code.put(Code.bprint);
             }
@@ -1822,6 +1852,9 @@ ForConditionSemi ::=
         ForCondition SEMI_COLUMN
         |
         SEMI_COLUMN
+        {:
+            Code.loadConst(1);
+        :}
         |
         error SEMI_COLUMN
         {:
@@ -2213,57 +2246,73 @@ OpAndCondFactList ::=
 /******************* CondFact   *****************************/
 /************************************************************/
 CondFact ::=
-        Expr:expr
-        RelOpExprOrEpsilon:compareRight
-        {:
-            if (!expr.isSemanticError()
-                && ( (null == compareRight) || (!compareRight.isSemanticError())))
+    Expr:expr
+    RelOpExprOrEpsilon:compareRight
+    {:
+        if (!expr.isSemanticError()
+            && ( (null == compareRight) || (!compareRight.isSemanticError())))
+        {
+            if (null == compareRight)
             {
-                if (null == compareRight)
+                if(check_type_and_report(expr.getObj(), TabExt.boolType, exprleft, "Tip kod logickog izraza mora biti boolean"))
                 {
-                    if (!expr.getObj().getType().equals(TabExt.boolType))
+                    RESULT = expr.setSemanticError(true);
+                }
+                RESULT = expr;
+            }
+            else
+            {
+                if (typesCompatibile(expr.getObj().getType(), compareRight.getObj().getType()))
+                {
+                    if ( (expr.isClass() || compareRight.isClass()
+                        || expr.isArray() || compareRight.isArray())
+                        && ( (compareRight.getRelOp() != Code.eq) &&
+                        (compareRight.getRelOp() != Code.ne)))
                     {
-                        RESULT = expr.setSemanticError(true);
+                        semantic_error("Kad se porede nizovi/klase sme da se koristi samo != i ==", exprleft);
+                        RESULT = (new ObjResultWrapper()).setSemanticError(true);
+                    }
+                    else
+                    {
+                        // JCONDFALSE.
+                        //
+                        Code.putFalseJump(compareRight.getRelOp(), 0);
+                        int adrFromWhereToJumpFalse = Code.pc - 2;
+                        // TRUE.
+                        //
+                        Code.put(Code.const_1);
+                        Code.putJump(0);
+                        int adrFromWhereToJumpTrue = Code.pc - 2;
+
+                        Code.fixup(adrFromWhereToJumpFalse);
+                        // False.
+                        //
+                        Code.put(Code.const_n);
+                        // JMP over this
+                        Code.fixup(adrFromWhereToJumpTrue);
+                        RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", TabExt.boolType), true);
                     }
                 }
                 else
                 {
-                    // TODO: add checks for type compatiblility.
-                    //
-                    // JCONDFALSE.
-                    //
-                    Code.putFalseJump(compareRight.getRelOp(), 0);
-                    int adrFromWhereToJumpFalse = Code.pc - 2;
-                    // TRUE.
-                    //
-                    Code.put(Code.const_1);
-                    Code.putJump(0);
-                    int adrFromWhereToJumpTrue = Code.pc - 2;
-
-                    Code.fixup(adrFromWhereToJumpFalse);
-                    // False.
-                    //
-                    Code.put(Code.const_n);
-                    // JMP over this
-                    Code.fixup(adrFromWhereToJumpTrue);
+                    semantic_error("Tipovi kod poredjenja nisu kompatibilni.", exprleft);
+                    RESULT = (new ObjResultWrapper()).setSemanticError(true);
                 }
-                RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", TabExt.boolType), true);
-            }
-            else
-            {
-                RESULT = expr;
             }
 
-
-        :}
-        ;
+        }
+        else
+        {
+            RESULT = expr.setSemanticError(true);
+        }
+    :}
+    ;
 RelOpExprOrEpsilon ::=
         Relop:relOp
         Expr:expr
         {:
             if (!expr.isSemanticError())
             {
-                //expr.generateRightValue();
                 expr.setRelOp(relOp);
             }
             RESULT = expr;
@@ -2280,45 +2329,31 @@ RelOpExprOrEpsilon ::=
 /******************* Expr       *****************************/
 /************************************************************/
 Expr ::=
-    OpSubEpsilon:isNegative
+    OP_SUB
     AddopRightTerm:term
     {:
-        if (isNegative)
+        if (!term.isSemanticError()
+        && check_type_and_report(term.getObj(), Tab.intType, termleft, " Kad se - nalazi ispred nekog izraza, on mora biti int."))
         {
-            if (!term.isSemanticError()
-            && check_type_and_report(term.getObj(), Tab.intType, termleft, " Kad se - nalazi ispred nekog izraza, on mora biti int."))
-            {
-                Code.put(Code.neg);
-                term.generateRightValue();
-                RESULT = term;
-            }
-            else
-            {
-                RESULT = term.setSemanticError(true);
-            }
+            Code.put(Code.neg);
+            term.generateRightValue();
+            RESULT = term;
         }
         else
         {
-            if (!term.isSemanticError())
-            {
-                term.generateRightValue();
-            }
-            RESULT = term;
+            RESULT = term.setSemanticError(true);
         }
-
+    :}
+    |
+    AddopRightTerm:term
+    {:
+        if (!term.isSemanticError())
+        {
+            term.generateRightValue();
+        }
+        RESULT = term;
     :}
     ;
-
-OpSubEpsilon ::=
-        OP_SUB
-        {:
-            RESULT = true;
-        :}
-        |
-        {:
-            RESULT = false;
-        :}
-        ;
 
 AddopRightTerm ::=
     AddopLeftTerm:leftTerm AddopRight:op
@@ -2518,7 +2553,7 @@ Factor ::=
                                          "Tip izraza kod NEW operatora sa nizom mora da bude int"))
                 {
                     Code.put(Code.newarray);
-                    if (type.getObj().getType().equals(Tab.charType))
+                    if (typesEqual(type.getObj().getType(), Tab.charType))
                     {
                         Code.put(0);
                     }

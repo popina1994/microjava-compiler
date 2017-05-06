@@ -16,6 +16,7 @@ class K1
 		print(eol); }
 		
 		static int rek(int n)
+		int z;
 		{
 			
 			if (n == 0)
@@ -66,6 +67,7 @@ class K2 extends K1
 	{
 		k1 = new K1;
 		k1.izr(5);
+		K1.rek(5);
 		
 		k1.i = 4;
 		k1.c = 'a';

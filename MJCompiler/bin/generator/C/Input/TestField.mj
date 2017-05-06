@@ -8,6 +8,16 @@ class K1
 	char c, cNiz[];
 	bool b, bNiz[];
 	{
+	
+				void m() {
+			print('m');
+		}
+		
+		void testP()
+		{
+			m();
+		}
+		
 			void t() { 
 			print('t');
 			print('u');
@@ -37,9 +47,15 @@ class K1
 			print(eol);
 		}
 		
-		void m() {
-			print('m');
+		void dva(int a, int b)
+		{
+			print(a);
+			print(b);
 		}
+		
+
+		
+
 		void n(int z)  { print(z); } 
 
 		K1 R() {}
@@ -57,6 +73,12 @@ class K1
 
 class K2 extends K1
 {
+	{
+	void m()
+	{
+		print('i');
+	}
+	}
 }
 
 {
@@ -65,8 +87,22 @@ class K2 extends K1
 		int i; 
 		K2 k2;
 	{
+		
+		k1 = new K2;
+		k1.dva(1, 2);
+		k2 = new K2;
+		k2.testP();
+		k1 = k2;
+		k1.testP();
+		
+	
 		k1 = new K1;
+		k1.testP();
+		print('i');
 		k1.izr(5);
+		print('r');
+		k1.rek(5);
+		print('r');
 		K1.rek(5);
 		
 		k1.i = 4;

@@ -205,6 +205,7 @@ parser code {:
         boolean syntaxError = false;
         int relOp;
         boolean isVirtual = false;
+        boolean doesOverride = false;
 
         public ObjResultWrapper() {}
 
@@ -345,9 +346,16 @@ parser code {:
             return relOp;
         }
 
+        public boolean doesOverride()
+        {
+            return doesOverride;
+        }
+
+        public void setDoesOverride(boolean doesOverride)
+        {
+            this.doesOverride = doesOverride;
+        }
     }
-
-
 
 
     // U slucaju greske.
@@ -385,9 +393,6 @@ parser code {:
     }
 
     Logger log = Logger.getLogger(getClass());
-
-
-    // slede redefinisani metodi za prijavu gresaka radi izmene teksta poruke
 
     // MJParser greska.
     //
@@ -504,7 +509,6 @@ parser code {:
         return false;
     }
 
-
     boolean find_double_and_report_search(String name, int line, String additionalMessage)
     {
         Scope currentScope = Tab.currentScope;
@@ -524,10 +528,10 @@ parser code {:
         }
     }
 
-
-
-    ObjResultWrapper find_virtual_method(Struct childClass, Struct parentClass, String methodName)
+    ObjResultWrapper find_virtual_method(Struct childClass, String methodName,
+    boolean isStatic)
     {
+        Struct parentClass = getParentClass(childClass);
         Obj methodObj  = childClass.getMembersTable().searchKey(methodName);
         if (methodObj == null)
         {
@@ -782,6 +786,7 @@ action code {:
     ObjResultWrapper curFieldType = null;
     ObjResultWrapper curObjWrappFieldOrElem = null;
     ObjResultWrapper curObjWrapperClass = null;
+    ObjResultWrapper curObjWrapperMethod = null;
     LinkedList<ObjResultWrapper> listCurObjWrapperFieldOrElem = new LinkedList<ObjResultWrapper>();
     LinkedList<Integer> listAdrIfConditionTrue = new LinkedList<Integer>();
     LinkedList<Integer> listAdrIfConditionFalse = new LinkedList<Integer>();
@@ -1219,7 +1224,6 @@ VarExpr ::=
                     typeVar = new Struct (Struct.Array, typeVar);
                 }
             }
-
             if (!find_double_and_report_search(nameOfVar, nameOfVarleft, message)
                 && (typeVar != null) )
             {
@@ -1385,20 +1389,6 @@ BraceMethodDeclListEpsilonEpsilon ::=
 /************************************************************/
 MethodDecl ::=
         StaticEpsilon:isStatic
-        {:
-            if (!isInClass)
-            {
-                // TODO add semantic error for static in global function
-            }
-            else
-            {
-                if (!isStatic)
-                {
-                    addThis = true;
-                }
-            }
-        :}
-
         ReturnType:retType
         {:
             parser.log.debug("Prepoznat povratni tip", null);
@@ -1406,50 +1396,64 @@ MethodDecl ::=
         IDENT:nameOfMethod
         {:
             String message = "Metoda";
-            if (!find_double_and_report_search(nameOfMethod, nameOfMethodleft, message))
+            if (isInClass)
             {
-                TabExt.curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
+                ObjResultWrapper objWrapper = find_virtual_method(curObjWrapperClass.getObj().getType(), nameOfMethod, isStatic);
+                if (objWrapper == null)
+                {
+                    Obj curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
+                    curObjWrapperMethod = new ObjResultWrapper(curMethod, true);
+                }
+                else if (!objWrapper.isSemanticError())
+                {
+                    curObjWrapperMethod = objWrapper;
+                    curObjWrapperMethod.setDoesOverride(true);
+                }
+            }
+            else if (!find_double_and_report_search(nameOfMethod, nameOfMethodleft, message))
+            {
+                Obj curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
+                curObjWrapperMethod = new ObjResultWrapper(curMethod, true);
             }
 
         :}
         PAR_LEFT
         {:
             Tab.openScope();
-            if (addThis)
+            if (!isStatic && isInClass)
             {
                 Obj varObj = Tab.insert(Obj.Var, "this", curObjWrapperClass.getObj().getType());
                 varObj.setAdr(0);
                 addThis = false;
-
             }
             else
             {
-                setMethodStatic(TabExt.curMethod);
+                setMethodStatic(curObjWrapperMethod.getObj());
             }
 
         :}
         FormParsEpsilonParRight
         {:
-            if (null != TabExt.curMethod)
+            if (null != curObjWrapperMethod.getObj())
             {
                 // Postavi broj formalnih parametara.
                 //
-                TabExt.curMethod.setLevel(Tab.currentScope().getnVars());
+                curObjWrapperMethod.getObj().setLevel(Tab.currentScope().getnVars());
             }
         :}
         LocalVarDeclListBraceLeftEpsilon
         {:
-            if (null != TabExt.curMethod)
+            if (null != curObjWrapperMethod.getObj() && !curObjWrapperMethod.doesOverride())
             {
-                Tab.chainLocalSymbols(TabExt.curMethod);
+                Tab.chainLocalSymbols(curObjWrapperMethod.getObj());
             }
-            TabExt.curMethod.setAdr(Code.pc);
+            curObjWrapperMethod.getObj().setAdr(Code.pc);
             if (nameOfMethod.equals(METHOD_ENTRY_NAME))
             {
                 TabExt.doesMainExist = true;
                 if (listVFTAdresses.size() == 0)
                 {
-                    Code.mainPc = TabExt.curMethod.getAdr();
+                    Code.mainPc = curObjWrapperMethod.getObj().getAdr();
                 }
                 else
                 {
@@ -1459,7 +1463,7 @@ MethodDecl ::=
             }
 
             Code.put(Code.enter);
-            Code.put(TabExt.curMethod.getLevel());
+            Code.put(curObjWrapperMethod.getObj().getLevel());
             Code.put(Tab.currentScope().getnVars());
 
             parser.log.debug("Zavrseno prepoznavanje deklaracija lokalnih promen", null);
@@ -1977,6 +1981,7 @@ DesignatorFuncCall ::=
         Designator:func
         PAR_LEFT
         {:
+            // TODO: add semantic errors.
             if (func.isVirtual())
             {
                 // adr
@@ -2010,7 +2015,7 @@ DesignatorFuncCall ::=
                 int adr = func.getObj().getAdr() - Code.pc + 1;
                 Code.put2(adr);
             }
-            listIsVirtualFunction.addLast(func.isVirtual());
+            listIsVirtualFunction.removeLast();
             RESULT = func;
         :}
         ;
@@ -2196,7 +2201,14 @@ CommaExprList ::=
 CommaExpr ::=
         COMMA Expr:expr
         {:
-            //expr.generateRightValue();
+            if (listIsVirtualFunction.getLast())
+            {
+                // adr adr par
+                Code.put(Code.dup_x1);
+                // adr par adr par
+                Code.put(Code.pop);
+                //adr par adr
+            }
         :}
         ;
 
@@ -2631,7 +2643,6 @@ Designator ::=
         // TODO add more checks if is correct.
         curObjWrappFieldOrElem = find_for_use_and_report(name, nameleft, name);
 
-
         if ( isInClass)
         {
             if (curObjWrappFieldOrElem.isField())
@@ -2662,9 +2673,7 @@ Designator ::=
         {
             if(objWrapper == null)
             {
-
-                ObjResultWrapper objWrap = new ObjResultWrapper(curObjWrappFieldOrElem.getObj(), curObjWrappFieldOrElem.getObj().getKind() == Obj.Con);
-                RESULT = objWrap;
+                RESULT = curObjWrappFieldOrElem;
             }
             else if ( (objWrapper != null) && (!objWrapper.isSemanticError()) )
             {
@@ -2750,23 +2759,31 @@ DotIdentOrBracketExpr ::=
                 }
                 else
                 {
-                    curObjWrappFieldOrElem.generateRightValue();
-                    if (obj.getKind() == Obj.Fld)
+                    if ( (obj.getKind() == Obj.Meth) && (isMethodStatic(obj)) )
                     {
-                        // x
-                        Code.put(Code.dup);
-                        // x x
-                        Code.load(obj);
-                        // x x.i
-
-                        curObjWrappFieldOrElem = new ObjResultWrapper(obj, false);
+                        curObjWrappFieldOrElem = new ObjResultWrapper(obj, true);
                         RESULT = curObjWrappFieldOrElem;
                     }
                     else
                     {
-                        curObjWrappFieldOrElem = new ObjResultWrapper(obj, false);
-                        curObjWrappFieldOrElem.setVirtual(true);
-                        RESULT = curObjWrappFieldOrElem;
+                        curObjWrappFieldOrElem.generateRightValue();
+                        if (obj.getKind() == Obj.Fld)
+                        {
+                            // x
+                            Code.put(Code.dup);
+                            // x x
+                            Code.load(obj);
+                            // x x.i
+
+                            curObjWrappFieldOrElem = new ObjResultWrapper(obj, false);
+                            RESULT = curObjWrappFieldOrElem;
+                        }
+                        else
+                        {
+                            curObjWrappFieldOrElem = new ObjResultWrapper(obj, true);
+                            curObjWrappFieldOrElem.setVirtual(true);
+                            RESULT = curObjWrappFieldOrElem;
+                        }
                     }
                 }
             }

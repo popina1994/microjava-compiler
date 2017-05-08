@@ -18,7 +18,9 @@ int v;
 
 {
 	void t(){
-		nesto['int']; 
+		nesto['i'] = 1; 
+		promInt1['a'] = 1;
+		promInt1[1] = 1;
 		print('i', 2);
 		promInt1 = constInt1;
 		print(promInt1, 2);

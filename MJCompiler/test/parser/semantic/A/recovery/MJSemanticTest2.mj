@@ -29,6 +29,7 @@ int promInt1, nizInt1[], promInt2, nizInt2[];
 		promInt1 = promInt2 - c;
 		promInt1  = c += promInt1;
 		promInt1  = c -= promInt1;
+		promInt1  = t /= promInt1;
 		promInt1 = -c;
 		
 		

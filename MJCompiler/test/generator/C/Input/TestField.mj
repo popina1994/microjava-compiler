@@ -152,10 +152,5 @@ class K2 extends K1
 		print('s');
 		k1.n(5);
 		k1.t();
-		k2 = new K2;
-		//k2.i = 7;
-		//k2.t();
-		//k2.izr(5);
-		
 	}
 }

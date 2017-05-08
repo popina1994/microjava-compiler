@@ -1,0 +1,11 @@
+program test
+{
+	void test1(int t,)
+	{}
+	void test2(int , z t t)
+	{
+	}
+	void test3(test int t, int)
+	{
+	} 
+}

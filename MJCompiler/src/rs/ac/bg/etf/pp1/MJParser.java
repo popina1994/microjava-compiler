@@ -4144,6 +4144,7 @@ class CUP$MJParser$actions {
               Object RESULT =null;
 		
                 parser.report_error("Uspesan oporavak od greske prilikom definisanja uslova za if PAR_RIGHT je resila stvar", null);
+                RESULT = (new ObjResultWrapper()).setSyntaxError(true);
             
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("IfConditionParRight",48, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }

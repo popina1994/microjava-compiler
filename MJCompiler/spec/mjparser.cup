@@ -2265,6 +2265,7 @@ IfConditionParRight ::=
             error PAR_RIGHT
             {:
                 parser.report_error("Uspesan oporavak od greske prilikom definisanja uslova za if PAR_RIGHT je resila stvar", null);
+                RESULT = (new ObjResultWrapper()).setSyntaxError(true);
             :}
             ;
 OpOrCondTermList ::=

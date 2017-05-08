@@ -1,9 +1,17 @@
-program test;
+program test	
 
 {
 	void main()
-	int a;
+	bool a;
 	{
-		
+		if (a &&)
+		{
+		}
+		if (a ||)
+		{
+		}
+		if (a && a ||)
+		{
+		}
 	}
 }

@@ -36,6 +36,11 @@ bool Boolean;
     {
         return c;
     }
+    
+    void testic()
+    {
+    	print('t');
+    }
 
 	void main()
 	int t, u, i, j;

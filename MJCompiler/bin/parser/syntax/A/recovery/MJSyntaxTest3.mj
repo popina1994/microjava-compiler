@@ -13,6 +13,6 @@ int nestoReg;
 	int nesto9{
 		nestoReg = nestoReg +;
 		nestoReg = 1;	
-		nestoReg = nestoReg  * ; 
+		nestoReg = nestoReg  * ;
 	}
 }

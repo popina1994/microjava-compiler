@@ -1,0 +1,32 @@
+program test
+
+class K1{
+	int nizInt[];
+}
+
+class K2
+{
+	K1 k1;
+	int promInt;
+	
+	
+	
+
+}
+
+{
+	
+	void main()
+	K2 k2[];
+	{
+		k2 = new K2[2];
+		k2[0] = new K2;
+		k2[0].promInt = 1;
+		k2[0].k1 = new K1;
+		k2[0].k1.nizInt = new int[2];
+		
+		print(k2[0].k1.nizInt[1]+=1); 
+			
+	}
+}
+

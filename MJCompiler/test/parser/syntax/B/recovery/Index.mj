@@ -1,0 +1,10 @@
+program test
+{
+	void main()
+	int niz[];
+	int a;
+	{
+		niz[a +] = 1;
+		niz[] = 1;
+	}
+}

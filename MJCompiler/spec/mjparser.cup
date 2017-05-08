@@ -385,6 +385,16 @@ parser code {:
         {
             this.doesOverride = doesOverride;
         }
+
+        ObjResultWrapper propagateError(ObjResultWrapper obj)
+        {
+            if (obj != null)
+            {
+                semanticError = semanticError || obj.isSemanticError();
+                syntaxError = syntaxError || obj.isSyntaxError();
+            }
+            return this;
+        }
     }
 
 
@@ -1004,9 +1014,9 @@ Program ::=
 
 GlobalDeclListEpsilon ::=
     GlobalDeclList
-	|
-	/* epsilon */
-	;
+    |
+    /* epsilon */
+    ;
 
 GlobalDeclList ::=
     GlobalDeclList GlobalDecl
@@ -1016,12 +1026,12 @@ GlobalDeclList ::=
 
 GlobalDecl ::=
     ConstDecl
-	|
+    |
     // Samo zbog oporavka od greske.
     //
-	GlobalVarDecl
-	|
-	ClassDecl
+    GlobalVarDecl
+    |
+    ClassDecl
     {:
         parser.log.debug("Prepoznata klasa", null);
     :}
@@ -1089,9 +1099,9 @@ VarExprOrErrorComma ::=
 
 MethodDeclListEpsilon ::=
     MethodDeclList
-	|
-	/* epsilon */
-	;
+    |
+    /* epsilon */
+    ;
 
 MethodDeclList ::=
     MethodDeclList MethodDecl
@@ -1295,7 +1305,7 @@ ClassDecl ::=
             curObjWrapperClass = new ObjResultWrapper(obj);
         }
     :}
-	ExtendsTypeEpsilon:extendsType
+    ExtendsTypeEpsilon:extendsType
     {:
         if (!curObjWrapperClass.isSemanticError())
         {
@@ -1315,8 +1325,8 @@ ClassDecl ::=
             }
         }
     :}
-	BRACE_LEFT
-	FieldDeclListEpsilon
+    BRACE_LEFT
+    FieldDeclListEpsilon
     {:
         Tab.chainLocalSymbols(curObjWrapperClass.getObj().getType());
         // TODO : add check of semantic error.
@@ -1328,7 +1338,7 @@ ClassDecl ::=
 
     :}
 
-	BRACE_RIGHT
+    BRACE_RIGHT
     {:
         Tab.closeScope();
         Tab.insert(Obj.Type, curObjWrapperClass.getObj().getName(), curObjWrapperClass.getObj().getType());
@@ -1715,8 +1725,6 @@ Statement ::=
         listOfListOfBreaksInFor.addLast(new LinkedList<Integer>());
     :}
 
-
-
     Statement
     {:
         updateAdresses(listOfListOfContinuesInFor);
@@ -1730,22 +1738,49 @@ Statement ::=
     :}
     |
     FOR error SEMI_COLUMN ForCondition SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR DesignatorStatementOrAssign SEMI_COLUMN error SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR DesignatorStatementOrAssign SEMI_COLUMN ForCondition SEMI_COLUMN error PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT je resio stvar" , null);
+    :}
     |
     FOR error SEMI_COLUMN error SEMI_COLUMN DesignatorStatementOrAssign PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR error SEMI_COLUMN ForCondition SEMI_COLUMN error PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT ili SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR DesignatorStatementOrAssign SEMI_COLUMN error SEMI_COLUMN error PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT ili SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR error SEMI_COLUMN error SEMI_COLUMN error PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT ili SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR error SEMI_COLUMN error PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT ili SEMI_COLUMN je resio stvar" , null);
+    :}
     |
     FOR error PAR_RIGHT
+    {:
+        parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT je resio stvar" , null);
+    :}
     |
     BREAK SEMI_COLUMN
     {:
@@ -2044,45 +2079,57 @@ AssingmentStatement ::=
         Designator:dest
         Assignop:op
         {:
-            if (dest.isSemanticError() || !dest.isLeftValue())
+            if (!dest.isError())
             {
-                RESULT = dest.setSemanticError(true);
-            }
-            else
-            {
-                if (dest.hasAdditionalParsOnStack() && op == OP_ASSIGN_CODE)
+                if (dest.isLeftValue())
                 {
-                    // a i a[i]
-                    Code.put(Code.pop);
-                    // a i
+                    if ( dest.hasAdditionalParsOnStack() && op == OP_ASSIGN_CODE)
+                    {
+                        // a i a[i]
+                        // c c.x
+                        Code.put(Code.pop);
+                        // a i
+                        // c
+                    }
+                }
+                else
+                {
+                    semantic_error("Levi izraz kod dodele mora da bude lvalue.", destleft);
+                    RESULT = dest.setSemanticError(true);
+
                 }
             }
+
         :}
         Expr : expr
         {:
-            // Check error.
-            //
-            if (!dest.isSemanticError() && dest.isLeftValue() &&
-                !expr.isSemanticError())
+            if (!dest.isError() && !expr.isError())
             {
-
-                if (op != OP_ASSIGN_CODE)
+                if (typesAssignable(dest.getObj().getType(), expr.getObj().getType()))
                 {
-                    // Vrednost na steku nije duplirana jer
-                    // treba samo da se koristi za izracunavanje
-                    // Nista za dalje vrednosti.
-                    Code.put(op);
+                    if (op != OP_ASSIGN_CODE)
+                    {
+                        // Vrednost na steku nije duplirana jer
+                        // treba samo da se koristi za izracunavanje
+                        // Nista za dalje vrednosti.
+                        Code.put(op);
+                    }
+                    Code.store(dest.getObj());
+                    if ( (op == OP_ASSIGN_CODE)
+                        && !dest.hasAdditionalParsOnStack())
+                    {
+                        Code.put(Code.pop);
+                    }
                 }
-                Code.store(dest.getObj());
-                if ( (op == OP_ASSIGN_CODE)
-                    && !dest.hasAdditionalParsOnStack())
+                else
                 {
-                    Code.put(Code.pop);
-                }
+                    semantic_error("Vrednosti izraza pri dodeli nisu kompatibilne.", destleft);
+                    RESULT = dest.setSemanticError(true);
+                    }
             }
             else
             {
-                RESULT = dest.setSemanticError(true);
+                RESULT = dest.propagateError(expr);
             }
         :}
         ;
@@ -2091,7 +2138,7 @@ AssingmentStatementOrErrorSemi ::=
     Designator:dest
     Assignop:op
     {:
-        if (!dest.isSemanticError())
+        if (!dest.isError())
         {
             if (dest.isLeftValue())
             {
@@ -2117,8 +2164,7 @@ AssingmentStatementOrErrorSemi ::=
     {:
         // Check error.
         //
-        if (!dest.isSemanticError() && dest.isLeftValue() &&
-            (expr != null) && !expr.isSemanticError())
+        if (!dest.isError() && !expr.isError())
         {
             if (typesAssignable(dest.getObj().getType(),
                 expr.getObj().getType()))
@@ -2145,17 +2191,10 @@ AssingmentStatementOrErrorSemi ::=
         }
         else
         {
-            RESULT = dest.setSemanticError(true);
+            RESULT = dest.propagateError(expr);
         }
     :}
     ;
-
-AssignOpExpOrErrorSemi ::=
-        ExpOrErrorSemi:expr
-        {:
-            RESULT = expr;
-        :}
-        ;
 
 ExpOrErrorSemi ::=
         Expr:expr SEMI_COLUMN
@@ -2167,6 +2206,7 @@ ExpOrErrorSemi ::=
         {:
 
             parser.report_error("Uspesan oporavak od greske dodele promenljive,  SEMI_COLUMN je resio stvar", null);
+            RESULT = (new ObjResultWrapper()).setSyntaxError(true);
         :}
         ;
 
@@ -2322,7 +2362,7 @@ RelOpExprOrEpsilon ::=
         Relop:relOp
         Expr:expr
         {:
-            if (!expr.isSemanticError())
+            if (!expr.isError())
             {
                 expr.setRelOp(relOp);
             }
@@ -2640,38 +2680,46 @@ Designator ::=
     {:
         curObjWrappFieldOrElem = find_for_use_and_report(name, nameleft, name);
 
-        if (isInClass)
+        if (!curObjWrappFieldOrElem.isError())
         {
-            if (curObjWrappFieldOrElem.isField())
+            if (isInClass)
             {
-                Code.load(Tab.find("this"));
-                Code.put(Code.dup);
-            }
-            else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
-                && (!isMethodStatic(curObjWrappFieldOrElem.getObj())) )
-            {
-                Code.load(Tab.find("this"));
-                curObjWrappFieldOrElem.setVirtual(true);
-            }
-        }
 
-        listCurObjWrapperFieldOrElem.addLast(curObjWrappFieldOrElem);
-        if ((!curObjWrappFieldOrElem.isSemanticError())
-        && (curObjWrappFieldOrElem.loadable()))
-        {
-            Code.load(curObjWrappFieldOrElem.getObj());
+                if (curObjWrappFieldOrElem.isField())
+                {
+                    Code.load(Tab.find("this"));
+                    Code.put(Code.dup);
+                }
+                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
+                    && (!isMethodStatic(curObjWrappFieldOrElem.getObj())) )
+                {
+                    Code.load(Tab.find("this"));
+                    curObjWrappFieldOrElem.setVirtual(true);
+                }
+            }
+
+            listCurObjWrapperFieldOrElem.addLast(curObjWrappFieldOrElem);
+            if (curObjWrappFieldOrElem.loadable())
+            {
+                Code.load(curObjWrappFieldOrElem.getObj());
+            }
+
         }
 
     :}
     DotIdentOrBracketExprListEpsilon:objWrapper
     {:
-        if (!curObjWrappFieldOrElem.isSemanticError())
+        if (!curObjWrappFieldOrElem.isError())
         {
             if(objWrapper == null)
             {
                 RESULT = curObjWrappFieldOrElem;
             }
-            else if ( (objWrapper != null) && (!objWrapper.isSemanticError()) )
+            else if ( (objWrapper != null) && (!objWrapper.isError()) )
+            {
+                RESULT = objWrapper;
+            }
+            else
             {
                 RESULT = objWrapper;
             }
@@ -2681,12 +2729,16 @@ Designator ::=
             RESULT = curObjWrappFieldOrElem;
         }
 
-        if (!curObjWrappFieldOrElem.isSemanticError())
+        if (!curObjWrappFieldOrElem.isError())
         {
             listCurObjWrapperFieldOrElem.removeLast();
             if (listCurObjWrapperFieldOrElem.size() != 0)
             {
                 curObjWrappFieldOrElem = listCurObjWrapperFieldOrElem.getLast();
+            }
+            else
+            {
+                curObjWrappFieldOrElem = null;
             }
         }
 
@@ -2706,9 +2758,9 @@ DotIdentOrBracketExprListEpsilon ::=
 DotIdentOrBracketExprList ::=
         DotIdentOrBracketExprList:left DotIdentOrBracketExpr:objWrapper
         {:
-            if (left.isSemanticError() || objWrapper.isSemanticError())
+            if (left.isError() || objWrapper.isError())
             {
-                RESULT = objWrapper.setSemanticError(true);
+                objWrapper.propagateError(left);
             }
             else
             {
@@ -2726,7 +2778,7 @@ DotIdentOrBracketExprList ::=
 DotIdentOrBracketExpr ::=
     DOT IDENT:memberName
     {:
-        if (!curObjWrappFieldOrElem.isSemanticError())
+        if (!curObjWrappFieldOrElem.isError())
         {
             if (curObjWrappFieldOrElem.isClassType())
             {
@@ -2757,6 +2809,7 @@ DotIdentOrBracketExpr ::=
                 {
                     if ( (obj.getKind() == Obj.Meth) && (isMethodStatic(obj)) )
                     {
+                        Code.put(Code.pop);
                         curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
                         RESULT = curObjWrappFieldOrElem;
                     }
@@ -2790,7 +2843,7 @@ DotIdentOrBracketExpr ::=
         }
         else
         {
-            RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+            RESULT = curObjWrappFieldOrElem;
         }
     :}
     |
@@ -2800,28 +2853,37 @@ DotIdentOrBracketExpr ::=
     :}
     Expr:expr BRACKET_RIGHT
     {:
-        if (!curObjWrappFieldOrElem.isSemanticError()
-        && !expr.isSemanticError()
-        && check_type_and_report(expr.getObj(), Tab.intType,
-        exprleft, " indeks niza mora bude tipa int")
-        )
-            if (curObjWrappFieldOrElem.isArray())
+        if (!curObjWrappFieldOrElem.isError()
+        && !expr.isError())
+        {
+            if (check_type_and_report(expr.getObj(), Tab.intType,
+            exprleft, " indeks niza mora bude tipa int"))
             {
-                Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
-                Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
-                curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
-                Code.put(Code.dup2);
-                Code.load(obj);
-                RESULT = new ObjResultWrapper(obj);
+
+                if (curObjWrappFieldOrElem.isArray())
+                {
+                    Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
+                    Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
+                    curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
+                    Code.put(Code.dup2);
+                    Code.load(obj);
+                    RESULT = new ObjResultWrapper(obj);
+                }
+                else
+                {
+                    semantic_error("Kad se koriste [] sa leve strane mora biti niz", exprleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
             }
             else
             {
-                semantic_error("Kad se koriste [] sa leve strane mora biti niz", exprleft);
                 RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+
             }
+        }
         else
         {
-            RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+            RESULT = curObjWrappFieldOrElem.propagateError(expr);;
         }
 
     :}
@@ -2829,8 +2891,6 @@ DotIdentOrBracketExpr ::=
     BRACKET_LEFT error BRACKET_RIGHT
     {:
         parser.report_error("Uspesan oporavak od greske kod indeksa niza,  BRACKET_RIGHT je resio stvar" , null);
-        // TODO test further.
-        //
         RESULT = new ObjResultWrapper().setSyntaxError(true);
     :}
     ;

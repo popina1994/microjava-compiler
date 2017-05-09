@@ -21,7 +21,8 @@ public class UnitTestCodeGenerator extends UnitTest {
 					"C/Input/test303.mj",
 					"C/Input/TestDesignator.mj",
 					"C/Input/TestDesignator2.mj",
-					"C/Input/TestField.mj"
+					"C/Input/TestField.mj",
+					"C/Input/extending.mj"
 			};
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_OUTPUT = new String[]
 			{
@@ -37,7 +38,8 @@ public class UnitTestCodeGenerator extends UnitTest {
 					"C/Output/test303",
 					"C/Output/TestDesignator",
 					"C/Output/TestDesignator2",
-					"C/Output/TestField"
+					"C/Output/TestField",
+					"C/Output/extending"
 			};
 	
 	public static final String[] TEST_MICRO_JAVA_CODE_GENERATOR_TEST = new String[]
@@ -54,7 +56,8 @@ public class UnitTestCodeGenerator extends UnitTest {
 					"C/Output/test303.test",
 					"C/Output/TestDesignator.test",
 					"C/Output/TestDesignator2.test",
-					"C/Output/TestField.test"
+					"C/Output/TestField.test",
+					"C/Output/extending.test"
 			};
 	
 	private static final String PATH_TEST_CODE_GENERATOR_RUN = PATH_TEST + "/generator";

@@ -767,10 +767,11 @@ parser code {:
             {
                 Tab.insert(it.getKind(), it.getName(), it.getType());
             }
-            else if ( (it.getKind() == Obj.Meth) && !isMethodStatic(it))
+            else if ( (it.getKind() == Obj.Meth) )
             {
                 Obj methObj = Tab.insert(it.getKind(), it.getName(), it.getType());
                 methObj.setAdr(it.getAdr());
+                methObj.setFpPos(it.getFpPos());
 
                 Tab.openScope();
                 for (Obj itPars : it.getLocalSymbols())

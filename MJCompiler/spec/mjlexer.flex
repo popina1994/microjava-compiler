@@ -98,7 +98,7 @@ import org.apache.log4j.*;
 <COMMENT> . { yybegin(COMMENT); }
 <COMMENT> "\r\n" { yybegin(YYINITIAL); }
 
-(\'[ -~]\') {return new_symbol (sym.CONST_CHAR, yytext());}
+(\'[\x9 -~]\') {return new_symbol (sym.CONST_CHAR, yytext());}
 [0-9]+ { return new_symbol(sym.CONST_NUM, new Integer(yytext())); }
 ([a-z]|[A-Z])([a-z]|[A-Z]|[0-9]|_)* {return new_symbol (sym.IDENT, yytext());}
 

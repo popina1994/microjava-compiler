@@ -858,7 +858,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
             output.append(objToVisit.getName());
             output.append(": ");
 
-            if ( (objToVisit.getKind() == Obj.Meth) && (objToVisit.getType().getKind() == Struct.Class))
+            if ( ((objToVisit.getKind() == Obj.Meth) || (objToVisit.getKind() == Obj.Var) || (objToVisit.getKind() == Obj.Fld)) && (objToVisit.getType().getKind() == Struct.Class))
             {
                 output.append("Class ");
                 output.append(objToVisit.getType());
@@ -2201,6 +2201,25 @@ class CUP$MJParser$actions {
 		String charStr = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
             char c = charStr.charAt(1);
+            if (c== '\\')
+            {
+                c = charStr.charAt(2);
+                switch (c)
+                {
+                case 'n':
+                    c = '\n';
+                    break;
+                case 'r':
+                    c='\r';
+                    break;
+                case 't':
+                    c='\t';
+                    break;
+                case 'b':
+                    c='\b';
+                    break;
+                }
+            }
             RESULT = new Obj(Obj.Con, "", Tab.charType,
             c, charStrleft);
 
@@ -4586,8 +4605,8 @@ class CUP$MJParser$actions {
         {
             if (check_type_and_report(term.getObj(), Tab.intType, termleft, " Kad se - nalazi ispred nekog izraza, on mora biti int."))
             {
-                Code.put(Code.neg);
                 term.generateRightValue();
+                Code.put(Code.neg);
                 RESULT = term;
             }
             else
@@ -5249,6 +5268,8 @@ class CUP$MJParser$actions {
                 }
                 else
                 {
+
+                    curObjWrappFieldOrElem.generateRightValue();
                     if ( (obj.getKind() == Obj.Meth) && (isMethodStatic(obj)) )
                     {
                         Code.put(Code.pop);
@@ -5257,7 +5278,7 @@ class CUP$MJParser$actions {
                     }
                     else
                     {
-                        curObjWrappFieldOrElem.generateRightValue();
+                        //curObjWrappFieldOrElem.generateRightValue();
                         if (obj.getKind() == Obj.Fld)
                         {
                             // x

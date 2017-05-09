@@ -191,8 +191,6 @@ parser code {:
         static Struct boolType = new Struct(Struct.Bool);
         static SymbolTableVisitor symbolTableVisitor = new DumpUpgradeSymbolTableVisitor();
         static Obj programObj = null;
-        static Obj curMethod = null;
-        static Obj curClass = null;
         static boolean doesMainExist = false;
         static int staticDataCnt = 0;
     }
@@ -1143,6 +1141,7 @@ ConstExpr ::=
             {
                 Obj constObj = Tab.insert(Obj.Con, nameOfConst, curConstType.getObj().getType());
                 constObj.setAdr(numObj.getAdr());
+                ParserCnt.globalConstDefCnt++;
             }
 
         }
@@ -1206,13 +1205,17 @@ VarExpr ::=
             Obj varObj = null;
             int objType = Obj.Var;
 
-
             if (globalVar)
             {
                 message = "Definicija globalne varijable";
                 if (!curVarType.isSemanticError())
                 {
                     typeVar = curVarType.getObj().getType();
+                }
+                ParserCnt.globalVarDefCnt++;
+                if (isArray)
+                {
+                    ParserCnt.globalArrayDeclCnt++;
                 }
 
             }
@@ -1222,6 +1225,10 @@ VarExpr ::=
                 if (!curLocalType.isSemanticError())
                 {
                     typeVar = curLocalType.getObj().getType();
+                }
+                if (!isInClass && curObjWrapperMethod.getObj().getName().equals(METHOD_ENTRY_NAME))
+                {
+                    ParserCnt.localVarDefMainCnt++;
                 }
             }
             else if (formVar)

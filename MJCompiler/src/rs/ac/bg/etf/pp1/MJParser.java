@@ -1000,8 +1000,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
         static Struct boolType = new Struct(Struct.Bool);
         static SymbolTableVisitor symbolTableVisitor = new DumpUpgradeSymbolTableVisitor();
         static Obj programObj = null;
-        static Obj curMethod = null;
-        static Obj curClass = null;
         static boolean doesMainExist = false;
         static int staticDataCnt = 0;
     }
@@ -2114,6 +2112,7 @@ class CUP$MJParser$actions {
             {
                 Obj constObj = Tab.insert(Obj.Con, nameOfConst, curConstType.getObj().getType());
                 constObj.setAdr(numObj.getAdr());
+                ParserCnt.globalConstDefCnt++;
             }
 
         }
@@ -2227,13 +2226,17 @@ class CUP$MJParser$actions {
             Obj varObj = null;
             int objType = Obj.Var;
 
-
             if (globalVar)
             {
                 message = "Definicija globalne varijable";
                 if (!curVarType.isSemanticError())
                 {
                     typeVar = curVarType.getObj().getType();
+                }
+                ParserCnt.globalVarDefCnt++;
+                if (isArray)
+                {
+                    ParserCnt.globalArrayDeclCnt++;
                 }
 
             }
@@ -2243,6 +2246,10 @@ class CUP$MJParser$actions {
                 if (!curLocalType.isSemanticError())
                 {
                     typeVar = curLocalType.getObj().getType();
+                }
+                if (!isInClass && curObjWrapperMethod.getObj().getName().equals(METHOD_ENTRY_NAME))
+                {
+                    ParserCnt.localVarDefMainCnt++;
                 }
             }
             else if (formVar)

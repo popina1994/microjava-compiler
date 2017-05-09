@@ -2356,19 +2356,14 @@ class CUP$MJParser$actions {
 
         if (!curObjWrapperClass.isSemanticError())
         {
-            if (extendsType == null)
+            Tab.openScope();
+            if ( (extendsType != null) && (!extendsType.isError()))
             {
-                Tab.openScope();
-                Tab.insert(Obj.Fld, VFT_POINTER_NAME, Tab.intType);
-            }
-            else if (!extendsType.isError())
-            {
-                Tab.openScope();
                 extendFromParentClass( curObjWrapperClass.getObj(), extendsType.getObj());
             }
             else
             {
-                Tab.openScope();
+                Tab.insert(Obj.Fld, VFT_POINTER_NAME, Tab.intType);
             }
         }
     

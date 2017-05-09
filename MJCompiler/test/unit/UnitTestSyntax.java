@@ -20,7 +20,8 @@ public class UnitTestSyntax extends UnitTestParser {
 			"C/correct/TestField.mj",
 			"C/recovery/methodCall.mj",
 			"C/recovery/extending.mj",
-			"C/recovery/fields.mj"
+			"C/recovery/fields.mj",
+			"total/recoveryTotal.mj"
 	};
 	private static final String PATH_TEST_SYNTAX_RUN = PATH_TEST + "/parser/syntax";
 	

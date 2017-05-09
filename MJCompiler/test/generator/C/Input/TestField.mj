@@ -40,6 +40,21 @@ class K1
 			} 
 		}
 		
+		int rek2(int n)
+		int z;
+		{
+			
+			if (n == 0)
+			{				
+				return 1;
+			}
+			else 
+			{
+				print(n, 2);
+				return n * rek2(n-1);
+			} 
+		}
+		
 		void izr(int n)
 		{
 			print('r');
@@ -152,5 +167,6 @@ class K2 extends K1
 		print('s');
 		k1.n(5);
 		k1.t();
+		k1.rek2(5);
 	}
 }

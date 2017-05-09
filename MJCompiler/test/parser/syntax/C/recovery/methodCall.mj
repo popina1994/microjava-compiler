@@ -1,0 +1,25 @@
+program test
+
+class K1
+{
+{
+	void m(int t, int a, int b)
+	{
+	}
+	int r(int t, int a, int b)
+	{
+	}
+}
+}
+{
+	void main()
+	K1 k1;
+	int z;
+	{
+		k1 = new K1;
+		K1.m(1, 2, 3);
+		k1.r(1, 2, 3);
+		k1.m(fds asdf fds);
+		z = 1 + k1.m(fsd sdffd dsdf));
+	}
+}

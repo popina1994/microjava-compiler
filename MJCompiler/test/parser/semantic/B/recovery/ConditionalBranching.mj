@@ -9,7 +9,7 @@ int arr[];
 {
 	void main()
 		int c;
-		char z;
+		char z;	
 	{
 		if (c > z)
 			print(c);

@@ -883,13 +883,14 @@ non terminal FormPars, FormPar, FormParsEpsilonParRight, FormParOrErrorComma, Fo
 non terminal ObjResultWrapper Type;
 non terminal Statement, ElseStatementEpsilon, ExprEpsilon, IfConditionParRight;
 non terminal Obj CommaConstNumEpsilon;
-non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorSemi, ForConditionSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
+non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
+non terminal ObjResultWrapper ForConditionSemi;
 non terminal ObjResultWrapper DesignatorIncOrDec;
 non terminal ObjResultWrapper DesignatorFuncCall;
 non terminal Integer IncOrDec;
 non terminal ObjResultWrapper ExpOrErrorSemi;
 non terminal ObjResultWrapper AssignOpExpOrErrorSemi;
-non terminal ForCondition;
+non terminal ObjResultWrapper ForCondition;
 non terminal ObjResultWrapper OpOrCondTermList;
 non terminal ObjResultWrapper CondTerm;
 non terminal ObjResultWrapper OpAndCondFactList;
@@ -1809,13 +1810,19 @@ Statement ::=
     :}
 
     |
-    FOR PAR_LEFT DesignatorStatementOrAssign SEMI_COLUMN
+    FOR PAR_LEFT DesignatorStatementOrAssign:assign SEMI_COLUMN
     {:
         listAdrForCondition.addLast(Code.pc);
     :}
-    ForConditionSemi
+    ForConditionSemi:forCondition
     {:
-        //
+        if (!forCondition.isError())
+        {
+            if (check_type_and_report(forCondition.getObj(), TabExt.boolType, forConditionleft, "Tipa izraza uslovu for petlje."))
+            {
+
+            }
+        }
         Code.put(Code.const_n);
         Code.putFalseJump(Code.ne, 0);
         int adrConditionFalse = Code.pc - 2;
@@ -1888,22 +1895,38 @@ Statement ::=
         parser.report_error("Uspesan oporavak od greske kod FOR-a,  PAR_RIGHT je resio stvar" , null);
     :}
     |
-    BREAK SEMI_COLUMN
+    BREAK:breakObj SEMI_COLUMN
     {:
-        // Ne mora 0. Moze sta god.
-        //
-        Code.putJump(0);
-        int adr = Code.pc - 2;
-        listOfListOfBreaksInFor.getLast().addLast(adr);
-        parser.log.debug("Prepoznat BREAK", null);
+        if (!listAdrForCondition.isEmpty())
+        {
+            // Ne mora 0. Moze sta god.
+            //
+            Code.putJump(0);
+            int adr = Code.pc - 2;
+            listOfListOfBreaksInFor.getLast().addLast(adr);
+            parser.log.debug("Prepoznat BREAK", null);
+        }
+        else
+        {
+            semantic_error("BREAK mora da ima okruzujuci FOR", breakObjleft);
+        }
+
     :}
     |
-    CONTINUE SEMI_COLUMN
+    CONTINUE:continueObj SEMI_COLUMN
     {:
-        Code.putJump(0);
-        int adr = Code.pc - 2;
-        listOfListOfContinuesInFor.getLast().addLast(adr);
-        parser.log.debug("Prepoznat CONTINUE", null);
+        if (!listAdrForCondition.isEmpty())
+        {
+            Code.putJump(0);
+            int adr = Code.pc - 2;
+            listOfListOfContinuesInFor.getLast().addLast(adr);
+            parser.log.debug("Prepoznat CONTINUE", null);
+        }
+        else
+        {
+            semantic_error("CONTINUE mora da ima okruzujuci FOR", continueObjleft);
+        }
+
     :}
     |
     RETURN ExprEpsilon SEMI_COLUMN
@@ -2007,16 +2030,21 @@ ExprEpsilon ::=
 
 
 ForConditionSemi ::=
-        ForCondition SEMI_COLUMN
+        ForCondition:forCond SEMI_COLUMN
+        {:
+            RESULT = forCond;
+        :}
         |
         SEMI_COLUMN
         {:
             Code.loadConst(1);
+            RESULT = new ObjResultWrapper(new Obj(Obj.Con, "", TabExt.boolType));
         :}
         |
         error SEMI_COLUMN
         {:
               parser.report_error("Uspesan oporavak od greske kod uslova u for-u,  SEMI_COLUMN je resio stvar" , null);
+              RESULT = (new ObjResultWrapper()).setSyntaxError(true);
         :}
         ;
 
@@ -2366,7 +2394,10 @@ CommaExpr ::=
 /******************* Condition  *****************************/
 /************************************************************/
 ForCondition ::=
-            OpOrCondTermList
+            OpOrCondTermList:opOrList
+            {:
+                RESULT = opOrList;
+            :}
             ;
 IfConditionParRight ::=
             OpOrCondTermList:cond PAR_RIGHT
@@ -2381,14 +2412,25 @@ IfConditionParRight ::=
             :}
             ;
 OpOrCondTermList ::=
-        OpOrCondTermList OP_OR CondTerm
+        OpOrCondTermList:leftCond OP_OR OpAndCondFactList:rightCond
         // TODO : add checks
         //
         {:
-            Code.put(Code.add);
+            if (!leftCond.isError() && !rightCond.isError())
+            {
+                Code.put(Code.add);
+                RESULT = leftCond.propagateError(rightCond);
+            }
+            else
+            {
+                RESULT = leftCond;
+            }
         :}
         |
-        CondTerm
+        OpAndCondFactList:fact
+        {:
+            RESULT = fact;
+        :}
         ;
 
 /******************* CondTerm   *****************************/
@@ -2401,10 +2443,21 @@ OpAndCondFactList ::=
         // TODO add check if is boolType
         //
         {:
-            Code.put(Code.mul);
+            if (!leftFact.isError() && !rightFact.isError())
+            {
+                Code.put(Code.mul);
+                RESULT = leftFact;
+            }
+            else
+            {
+                RESULT = leftFact.propagateError(rightFact);
+            }
         :}
         |
-        CondFact
+        CondFact:condFact
+        {:
+            RESULT = condFact;
+        :}
         ;
 
 /******************* CondFact   *****************************/
@@ -2413,8 +2466,7 @@ CondFact ::=
     Expr:expr
     RelOpExprOrEpsilon:compareRight
     {:
-        if (!expr.isSemanticError()
-            && ( (null == compareRight) || (!compareRight.isSemanticError())))
+        if (!expr.isError() && ( (null ==compareRight) || !compareRight.isError()))
         {
             if (null == compareRight)
             {
@@ -2422,16 +2474,17 @@ CondFact ::=
                 {
                     RESULT = expr.setSemanticError(true);
                 }
-                RESULT = expr;
+                else
+                {
+                    RESULT = expr;
+                }
             }
             else
             {
                 if (typesCompatibile(expr.getObj().getType(), compareRight.getObj().getType()))
                 {
-                    if ( (expr.isClass() || compareRight.isClass()
-                        || expr.isArray() || compareRight.isArray())
-                        && ( (compareRight.getRelOp() != Code.eq) &&
-                        (compareRight.getRelOp() != Code.ne)))
+                    if ( (expr.isClass() || compareRight.isClass() || expr.isArray() || compareRight.isArray())
+                        && ( (compareRight.getRelOp() != Code.eq) && (compareRight.getRelOp() != Code.ne)))
                     {
                         semantic_error("Kad se porede nizovi/klase sme da se koristi samo != i ==", exprleft);
                         RESULT = (new ObjResultWrapper()).setSemanticError(true);
@@ -2467,7 +2520,7 @@ CondFact ::=
         }
         else
         {
-            RESULT = expr.setSemanticError(true);
+            RESULT = expr.propagateError(compareRight);
         }
     :}
     ;

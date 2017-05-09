@@ -1,0 +1,13 @@
+program test
+{
+
+	void main()
+	int c;
+	{
+		for (;c;)
+		{
+		}
+		break;
+		continue;
+	}
+}

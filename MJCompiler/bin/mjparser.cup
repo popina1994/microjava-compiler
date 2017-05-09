@@ -25,6 +25,7 @@ parser code {:
             currentIndent.append(indent);
         }
 
+
         protected void previousIndentationLevel() {
             if (currentIndent.length() > 0)
                 currentIndent.setLength(currentIndent.length()-indent.length());
@@ -881,7 +882,8 @@ non terminal  ObjResultWrapper ReturnType;
 non terminal  LocalVarDeclListBraceLeftEpsilon, LocalVarDeclListBraceLeft, LocalVarDeclOrErrorSemi, LocalVarDeclListOrErrorSemi, LocalVarExprList, LocalVarDeclOrErrorBraceLeft, StatementListEpsilon, StatementList;
 non terminal FormPars, FormPar, FormParsEpsilonParRight, FormParOrErrorComma, FormParsParRight, FormParOrErrorParRight;
 non terminal ObjResultWrapper Type;
-non terminal Statement, ElseStatementEpsilon, ExprEpsilon, IfConditionParRight;
+non terminal Statement, ElseStatementEpsilon, IfConditionParRight;
+non terminal ObjResultWrapper ExprEpsilon;
 non terminal Obj CommaConstNumEpsilon;
 non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
 non terminal ObjResultWrapper ForConditionSemi;
@@ -1908,7 +1910,7 @@ Statement ::=
         }
         else
         {
-            semantic_error("BREAK mora da ima okruzujuci FOR", breakObjleft);
+            semantic_error("BREAK mora da ima okruzujuci FOR.", breakObjleft);
         }
 
     :}
@@ -1924,18 +1926,43 @@ Statement ::=
         }
         else
         {
-            semantic_error("CONTINUE mora da ima okruzujuci FOR", continueObjleft);
+            semantic_error("CONTINUE mora da ima okruzujuci FOR.", continueObjleft);
         }
 
     :}
     |
-    RETURN ExprEpsilon SEMI_COLUMN
+    RETURN:returnObj ExprEpsilon:retVal SEMI_COLUMN
     {:
-        // TODO : return check semantic.
-        // Should exist, are types ok...
-        //
-        Code.put(Code.exit);
-        Code.put(Code.return_);
+        if (curObjWrapperMethod != null)
+        {
+            if (!curObjWrapperMethod.isError())
+            {
+                if (retVal == null)
+                {
+                    if (check_type_and_report(curObjWrapperMethod.getObj(), Tab.noType, retValleft, "RETURN mora da ima povratnu vrednost"))
+                    {
+                        Code.put(Code.exit);
+                        Code.put(Code.return_);
+                    }
+                }
+                else
+                {
+                    if (!retVal.isError())
+                    {
+                        if (check_type_and_report(curObjWrapperMethod.getObj(), retVal.getObj().getType(), retValleft, "RETURN vrednost mora da se slaze po tipu sa povratnom vrednoscu metode/funkcije"))
+                        {
+                            Code.put(Code.exit);
+                            Code.put(Code.return_);
+                        }
+                    }
+                }
+
+            }
+        }
+        else
+        {
+            semantic_error("RETURN mora da bude unutar funkcije/metode", returnObjleft);
+        }
 
         parser.log.debug("Prepoznat RETURN", null);
     :}
@@ -2022,8 +2049,14 @@ ElseStatementEpsilon ::=
         ;
 
 ExprEpsilon ::=
-        Expr
+        Expr:expr
+        {:
+            RESULT = expr;
+        :}
         |
+        {:
+            RESULT = null;
+        :}
         /* epsilon */
         ;
 

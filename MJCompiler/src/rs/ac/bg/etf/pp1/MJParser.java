@@ -84,7 +84,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
     "\062\011\000\002\062\007\000\002\062\005\000\002\062" +
     "\004\000\002\062\004\000\002\062\005\000\002\062\007" +
     "\000\002\062\010\000\002\062\005\000\002\063\004\000" +
-    "\002\063\002\000\002\064\003\000\002\064\002\000\002" +
+    "\002\063\002\000\002\065\003\000\002\065\002\000\002" +
     "\103\004\000\002\103\003\000\002\103\004\000\002\066" +
     "\004\000\002\066\002\000\002\101\003\000\002\101\003" +
     "\000\002\101\002\000\002\077\004\000\002\077\004\000" +
@@ -96,8 +96,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
     "\200\002\000\002\102\006\000\002\107\004\000\002\107" +
     "\004\000\002\201\002\000\002\071\005\000\002\072\003" +
     "\000\002\072\002\000\002\073\004\000\002\073\003\000" +
-    "\002\074\004\000\002\111\003\000\002\065\004\000\002" +
-    "\065\004\000\002\112\005\000\002\112\003\000\002\113" +
+    "\002\074\004\000\002\111\003\000\002\064\004\000\002" +
+    "\064\004\000\002\112\005\000\002\112\003\000\002\113" +
     "\003\000\002\114\005\000\002\114\003\000\002\115\004" +
     "\000\002\116\004\000\002\116\002\000\002\117\004\000" +
     "\002\117\003\000\002\120\005\000\002\120\003\000\002" +
@@ -621,7 +621,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
     "\134\u0128\137\362\141\360\001\001\000\002\001\001\000" +
     "\002\001\001\000\002\001\001\000\004\202\u0115\001\001" +
     "\000\002\001\001\000\036\014\032\015\031\016\030\017" +
-    "\215\064\u0111\105\220\117\u0112\120\201\121\203\122\222" +
+    "\215\065\u0111\105\220\117\u0112\120\201\121\203\122\222" +
     "\123\210\124\216\125\200\130\177\001\001\000\002\001" +
     "\001\000\002\001\001\000\002\001\001\000\002\001\001" +
     "\000\002\001\001\000\002\001\001\000\002\001\001\000" +
@@ -717,7 +717,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
     "\124\216\125\200\130\177\001\001\000\004\066\374\001" +
     "\001\000\002\001\001\000\002\001\001\000\002\001\001" +
     "\000\002\001\001\000\002\001\001\000\002\001\001\000" +
-    "\044\014\032\015\031\016\030\017\215\065\u0103\105\220" +
+    "\044\014\032\015\031\016\030\017\215\064\u0103\105\220" +
     "\112\u0102\114\214\115\205\117\207\120\201\121\203\122" +
     "\222\123\210\124\216\125\200\130\177\001\001\000\002" +
     "\001\001\000\004\167\u010c\001\001\000\004\171\u0106\001" +
@@ -832,6 +832,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
         protected void nextIndentationLevel() {
             currentIndent.append(indent);
         }
+
 
         protected void previousIndentationLevel() {
             if (currentIndent.length() > 0)
@@ -3670,12 +3671,43 @@ class CUP$MJParser$actions {
           case 134: // Statement ::= RETURN ExprEpsilon SEMI_COLUMN 
             {
               Object RESULT =null;
+		int returnObjleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
+		int returnObjright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
+		Object returnObj = (Object)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
+		int retValleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
+		int retValright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
+		ObjResultWrapper retVal = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		
-        // TODO : return check semantic.
-        // Should exist, are types ok...
-        //
-        Code.put(Code.exit);
-        Code.put(Code.return_);
+        if (curObjWrapperMethod != null)
+        {
+            if (!curObjWrapperMethod.isError())
+            {
+                if (retVal == null)
+                {
+                    if (check_type_and_report(curObjWrapperMethod.getObj(), Tab.noType, retValleft, "RETURN mora da ima povratnu vrednost"))
+                    {
+                        Code.put(Code.exit);
+                        Code.put(Code.return_);
+                    }
+                }
+                else
+                {
+                    if (!retVal.isError())
+                    {
+                        if (check_type_and_report(curObjWrapperMethod.getObj(), retVal.getObj().getType(), retValleft, "RETURN vrednost mora da se slaze po tipu sa povratnom vrednoscu metode/funkcije"))
+                        {
+                            Code.put(Code.exit);
+                            Code.put(Code.return_);
+                        }
+                    }
+                }
+
+            }
+        }
+        else
+        {
+            semantic_error("RETURN mora da bude unutar funkcije/metode", returnObjleft);
+        }
 
         parser.log.debug("Prepoznat RETURN", null);
     
@@ -3802,18 +3834,25 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 140: // ExprEpsilon ::= Expr 
             {
-              Object RESULT =null;
-
-              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ExprEpsilon",50, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
+              ObjResultWrapper RESULT =null;
+		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+            RESULT = expr;
+        
+              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ExprEpsilon",51, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 141: // ExprEpsilon ::= 
             {
-              Object RESULT =null;
-
-              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ExprEpsilon",50, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
+              ObjResultWrapper RESULT =null;
+		
+            RESULT = null;
+        
+              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ExprEpsilon",51, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
 
@@ -4477,7 +4516,7 @@ class CUP$MJParser$actions {
 		
                 RESULT = cond;
             
-              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("IfConditionParRight",51, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
+              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("IfConditionParRight",50, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
 
@@ -4489,7 +4528,7 @@ class CUP$MJParser$actions {
                 parser.report_error("Uspesan oporavak od greske prilikom definisanja uslova za if PAR_RIGHT je resila stvar", null);
                 RESULT = (new ObjResultWrapper()).setSyntaxError(true);
             
-              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("IfConditionParRight",51, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
+              CUP$MJParser$result = parser.getSymbolFactory().newSymbol("IfConditionParRight",50, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
 

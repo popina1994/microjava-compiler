@@ -10,4 +10,15 @@ program test
 		break;
 		continue;
 	}
+	
+	void test()
+	{
+		return 1;
+	}
+	
+	int test1()
+	{
+		return 'a';
+	}
+	
 }

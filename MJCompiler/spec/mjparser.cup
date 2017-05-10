@@ -956,7 +956,6 @@ terminal BRACKET_LEFT, BRACKET_RIGHT, BRACE_LEFT, BRACE_RIGHT;
 
 non terminal Program;
 non terminal GlobalDeclListEpsilon, GlobalDeclList, GlobalDecl, GlobalVarDecl, MethodDeclListEpsilon, MethodDeclList;
-
 non terminal ConstDecl, ConstExprList, ConstExpr;
 non terminal Obj ConstNum;
 non terminal Obj ConstChar;
@@ -968,7 +967,7 @@ non terminal ObjResultWrapper VarExprOrErrorSemi;
 non terminal ObjResultWrapper VarExprOrErrorComma;
 non terminal Boolean BracketEpsilon;
 non terminal ObjResultWrapper ExtendsTypeEpsilonBraceLeftOrError;
-non terminal ClassDecl, FieldDeclListEpsilon, FieldDeclList, FieldDecl, FieldExprList, BraceMethodDeclListEpsilonEpsilon;
+non terminal ClassDecl, FieldDeclList, FieldDecl, FieldExprList;
 non terminal  FieldDeclListEpsilonBraceMethodDeclListEpsilon;
 non terminal FieldDeclListOrErrorBraceLeft, FieldDeclErrorBraceLeft;
 non terminal MethodDecl;
@@ -980,16 +979,14 @@ non terminal ObjResultWrapper Type;
 non terminal Statement, ElseStatementEpsilon, IfConditionParRight;
 non terminal ObjResultWrapper ExprEpsilon;
 non terminal Obj CommaConstNumEpsilon;
-non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
+non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
 non terminal ObjResultWrapper ForConditionSemi;
 non terminal ObjResultWrapper DesignatorIncOrDec;
 non terminal ObjResultWrapper DesignatorFuncCall;
 non terminal Integer IncOrDec;
 non terminal ObjResultWrapper ExpOrErrorSemi;
-non terminal ObjResultWrapper AssignOpExpOrErrorSemi;
 non terminal ObjResultWrapper ForCondition;
 non terminal ObjResultWrapper OpOrCondTermList;
-non terminal ObjResultWrapper CondTerm;
 non terminal ObjResultWrapper OpAndCondFactList;
 non terminal ObjResultWrapper CondFact;
 non terminal ObjResultWrapper RelOpExprOrEpsilon;
@@ -1000,7 +997,6 @@ non terminal ObjResultWrapper Term;
 non terminal ObjResultWrapper MullopRightFactor;
 non terminal ObjResultWrapper  MulopLeftFactor;
 non terminal ObjResultWrapper Factor;
-non terminal ParActParsEpsilonEpsilon;
 non terminal ObjResultWrapper BracketExprEpsilon;
 non terminal ObjResultWrapper Designator;
 non terminal ObjResultWrapper DotIdentOrBracketExprListEpsilon;
@@ -1585,12 +1581,6 @@ FieldExprList ::=
             FieldExprList COMMA VarExpr
             |
             VarExpr
-            ;
-
-BraceMethodDeclListEpsilonEpsilon ::=
-            BRACE_LEFT MethodDeclListEpsilon BRACE_RIGHT
-            |
-            /* epsilon */
             ;
 
 /************************* MethodDecl **************************/
@@ -2594,9 +2584,6 @@ OpOrCondTermList ::=
 
 /******************* CondTerm   *****************************/
 /************************************************************/
-CondTerm ::=
-        OpAndCondFactList
-        ;
 OpAndCondFactList ::=
         OpAndCondFactList:leftFact OP_AND CondFact:rightFact
         // TODO add check if is boolType
@@ -3038,14 +3025,13 @@ Designator ::=
         {
             if (isInClass)
             {
-
                 if (curObjWrappFieldOrElem.isField())
                 {
                     Code.load(Tab.find("this"));
                     Code.put(Code.dup);
                 }
-                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth) &&
-                        isMethodVirtual(curObjWrappFieldOrElem.getObj()))
+                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
+                    && isMethodVirtual(curObjWrappFieldOrElem.getObj()))
                 {
                     Code.load(Tab.find("this"));
                     curObjWrappFieldOrElem.setVirtual(true);

@@ -25,6 +25,7 @@ parser code {:
             currentIndent.append(indent);
         }
 
+
         protected void previousIndentationLevel() {
             if (currentIndent.length() > 0)
                 currentIndent.setLength(currentIndent.length()-indent.length());
@@ -69,10 +70,20 @@ parser code {:
                 {
                     output.append(", static method");
                 }
-                else
+
+                if (isMethodGlobal(objToVisit))
+                {
+                    output.append(", global function");
+                }
+                if (isMethodVirtual(objToVisit))
                 {
                     output.append(", virtual method");
+                    if (doesMethodOverride(objToVisit))
+                    {
+                        output.append(", overidden method");
+                    }
                 }
+
             }
 
             if (objToVisit.getKind() == Obj.Prog || objToVisit.getKind() == Obj.Meth) {
@@ -567,28 +578,59 @@ parser code {:
     }
 
     ObjResultWrapper find_virtual_method(Struct childClass, String methodName,
-    boolean isStatic)
+    boolean isStatic, int line)
     {
         Struct parentClass = getParentClass(childClass);
+        // If there is not method in symbol table for child class that means
+        // it is not defined in non of its parent classes.
+        //
         Obj methodObj  = childClass.getMembersTable().searchKey(methodName);
         if (methodObj == null)
         {
             return null;
         }
 
-        Obj parentMethodObj = parentClass.getMembersTable().searchKey(methodName);
+        // Method is either static or virtual or double.
+        //
+
+        Obj parentMethodObj = null;
+        if (null != parentClass)
+        {
+            parentMethodObj  = parentClass.getMembersTable().searchKey(methodName);
+        }
+        // Method is double because it does not exsit in parent class.
+        //
         if (parentMethodObj == null)
         {
-            // Double definition of method.
-            //
+            semantic_error("Metoda sa datim imenom vec postoji", line);
             return (new ObjResultWrapper()).setSemanticError(true);
         }
 
+        // Method is either virtual or static, static ones cannot be overidden.
         if (parentMethodObj.getKind() != Obj.Meth)
         {
-            // Double
+            semantic_error("Pokusavas da override-ujes nesto stoj nije metoda", line);
             return (new ObjResultWrapper()).setSemanticError(true);
         }
+
+        if (isMethodStatic(parentMethodObj))
+        {
+            semantic_error("Pokusavas da override-ujes staticku metodu.", line);
+            return (new ObjResultWrapper()).setSemanticError(true);
+        }
+
+        if (isStatic)
+        {
+            semantic_error("Staticka metoda ne moze da override-uje virtuelnu.", line);
+            return (new ObjResultWrapper()).setSemanticError(true);
+        }
+
+        if (doesMethodOverride(methodObj))
+        {
+            semantic_error("Virtuelna metoda sa ovim imenom vec postoji", line);
+            return (new ObjResultWrapper()).setSemanticError(true);
+        }
+
 
         return new ObjResultWrapper(methodObj);
     }
@@ -702,6 +744,11 @@ parser code {:
         }
     }
 
+    public static int BIT_IS_STATIC = 0x1 << 1;
+    public static int BIT_DOES_OVERRIDE = 0x1 << 2;
+    public static int BIT_IS_GLOBAL = 0x1 << 3;
+    public static int BIT_IS_VIRTUAL = 0x1 << 4;
+
     void putIntInStaticData(int val)
     {
         Code.loadConst(val);
@@ -709,14 +756,75 @@ parser code {:
         Code.put2(TabExt.staticDataCnt++);
     }
 
-    static boolean isMethodStatic(Obj obj)
+    static void setBitOnInFpPos(Obj obj, int bit)
     {
-        return obj.getFpPos() != 0;
+        obj.setFpPos(obj.getFpPos() | bit);
+    }
+
+    static void setBitOffInFpPos(Obj obj, int bit)
+    {
+        obj.setFpPos(obj.getFpPos() & ~bit);
+    }
+
+    static boolean isBitOnInFpPos(Obj obj, int bit)
+    {
+        if ( (obj.getFpPos() & bit) != 0)
+        {
+            return true;
+        }
+        return false;
     }
 
     static void setMethodStatic(Obj obj)
     {
-        obj.setFpPos(1);
+        setBitOnInFpPos(obj, BIT_IS_STATIC);
+    }
+
+    static boolean isMethodStatic(Obj obj)
+    {
+        return isBitOnInFpPos(obj, BIT_IS_STATIC);
+    }
+
+    static void setMethodOverride(Obj obj)
+    {
+        setBitOnInFpPos(obj, BIT_DOES_OVERRIDE);
+    }
+
+    static void setMethodOverride(Obj obj, boolean doesOveride)
+    {
+        if (doesOveride)
+        {
+            setBitOnInFpPos(obj, BIT_DOES_OVERRIDE);
+        }
+        else
+        {
+            setBitOffInFpPos(obj, BIT_DOES_OVERRIDE);
+        }
+    }
+
+    static boolean doesMethodOverride(Obj obj)
+    {
+        return isBitOnInFpPos(obj, BIT_DOES_OVERRIDE);
+    }
+
+    static void setMethodVirtual(Obj obj)
+    {
+        setBitOnInFpPos(obj, BIT_IS_VIRTUAL);
+    }
+
+    static boolean isMethodVirtual(Obj obj)
+    {
+        return isBitOnInFpPos(obj, BIT_IS_VIRTUAL);
+    }
+
+    static void setMethodGlobal(Obj obj)
+    {
+        setBitOnInFpPos(obj, BIT_IS_GLOBAL);
+    }
+
+    static boolean isMethodGlobal(Obj obj)
+    {
+        return isBitOnInFpPos(obj, BIT_IS_GLOBAL);
     }
 
     static void setParentClass(Obj child, Obj parent)
@@ -770,6 +878,7 @@ parser code {:
                 Obj methObj = Tab.insert(it.getKind(), it.getName(), it.getType());
                 methObj.setAdr(it.getAdr());
                 methObj.setFpPos(it.getFpPos());
+                setMethodOverride(methObj, false);
 
                 Tab.openScope();
                 for (Obj itPars : it.getLocalSymbols())
@@ -881,7 +990,8 @@ non terminal  ObjResultWrapper ReturnType;
 non terminal  LocalVarDeclListBraceLeftEpsilon, LocalVarDeclListBraceLeft, LocalVarDeclOrErrorSemi, LocalVarDeclListOrErrorSemi, LocalVarExprList, LocalVarDeclOrErrorBraceLeft, StatementListEpsilon, StatementList;
 non terminal FormPars, FormPar, FormParsEpsilonParRight, FormParOrErrorComma, FormParsParRight, FormParOrErrorParRight;
 non terminal ObjResultWrapper Type;
-non terminal Statement, ElseStatementEpsilon, ExprEpsilon, IfConditionParRight;
+non terminal Statement, ElseStatementEpsilon, IfConditionParRight;
+non terminal ObjResultWrapper ExprEpsilon;
 non terminal Obj CommaConstNumEpsilon;
 non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
 non terminal ObjResultWrapper ForConditionSemi;
@@ -1369,14 +1479,22 @@ ClassDecl ::=
 ExtendsTypeEpsilonBraceLeftOrError ::=
     EXTENDS Type:type BRACE_LEFT
     {:
-        if ( (!type.isSemanticError())
-            &&(type.getObj().getKind() != Obj.Type)
-            && (type.getObj().getType().getKind() != Struct.Class) )
+        if (!type.isError())
         {
-            semantic_error("Tip " + type.getObj().getName() + " nije tipa klase.", typeleft);
-            type.setSemanticError(true);
+            if ( (type.getObj().getKind() != Obj.Type) || (type.getObj().getType().getKind() != Struct.Class))
+            {
+                semantic_error("Tip " + type.getObj().getName() + " nije tipa klase.", typeleft);
+                RESULT = type.setSemanticError(true);
+            }
+            else
+            {
+                RESULT = type;
+            }
         }
-        RESULT =  type;
+        else
+        {
+            RESULT = type;
+        }
     :}
     |
     EXTENDS error BRACE_LEFT
@@ -1501,92 +1619,116 @@ MethodDecl ::=
             String message = "Metoda";
             if (isInClass)
             {
-                ObjResultWrapper objWrapper = find_virtual_method(curObjWrapperClass.getObj().getType(), nameOfMethod, isStatic);
+                ObjResultWrapper objWrapper = find_virtual_method(curObjWrapperClass.getObj().getType(), nameOfMethod, isStatic, nameOfMethodleft);
                 if (objWrapper == null)
                 {
                     Obj curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
                     curObjWrapperMethod = new ObjResultWrapper(curMethod);
+                    if (isStatic)
+                    {
+                        setMethodStatic(curObjWrapperMethod.getObj());
+                    }
+                    else
+                    {
+                        setMethodVirtual(curObjWrapperMethod.getObj());
+                    }
                 }
                 else if (!objWrapper.isSemanticError())
                 {
                     curObjWrapperMethod = objWrapper;
+                    setMethodOverride(curObjWrapperMethod.getObj());
                     curObjWrapperMethod.setDoesOverride(true);
                 }
+                else
+                {
+                    curObjWrapperMethod.setSemanticError(true);
+                }
             }
-            else if (!find_double_and_report_search(nameOfMethod, nameOfMethodleft, message))
+            else
             {
-                Obj curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
-                curObjWrapperMethod = new ObjResultWrapper(curMethod);
+                if (!find_double_and_report_search(nameOfMethod, nameOfMethodleft, message))
+                {
+                    if (isStatic)
+                    {
+                        semantic_error("STATIC ne moze da se koristi kod globalnih funkcija", isStaticleft);
+                    }
+                    Obj curMethod  = Tab.insert(Obj.Meth, nameOfMethod, retType.getObj().getType());
+                    curObjWrapperMethod = new ObjResultWrapper(curMethod);
+                    setMethodGlobal(curObjWrapperMethod.getObj());
+                }
+                else
+                {
+                    curObjWrapperMethod = (new ObjResultWrapper()).setSemanticError(true);
+                }
             }
-
+            curObjWrapperMethod.propagateError(retType);
         :}
         PAR_LEFT
         {:
             Tab.openScope();
-            if (!isStatic && isInClass)
+            if (!curObjWrapperMethod.isError())
             {
-                Obj varObj = Tab.insert(Obj.Var, "this", curObjWrapperClass.getObj().getType());
-                varObj.setAdr(0);
-                addThis = false;
+                if (!isStatic && isInClass)
+                {
+                    Obj varObj = Tab.insert(Obj.Var, "this", curObjWrapperClass.getObj().getType());
+                    varObj.setAdr(0);
+                    addThis = false;
+                }
             }
-            else
-            {
-                setMethodStatic(curObjWrapperMethod.getObj());
-            }
-
         :}
         FormParsEpsilonParRight
         {:
-            if (null != curObjWrapperMethod.getObj())
+            if (!curObjWrapperMethod.isError())
             {
-                // Postavi broj formalnih parametara.
-                //
                 curObjWrapperMethod.getObj().setLevel(Tab.currentScope().getnVars());
             }
         :}
         LocalVarDeclListBraceLeftEpsilon
         {:
-            if (null != curObjWrapperMethod.getObj() && !curObjWrapperMethod.doesOverride())
+            if (!curObjWrapperMethod.isError())
             {
-                Tab.chainLocalSymbols(curObjWrapperMethod.getObj());
-            }
-            curObjWrapperMethod.getObj().setAdr(Code.pc);
-            if (nameOfMethod.equals(METHOD_ENTRY_NAME) && !isInClass)
-            {
-                TabExt.doesMainExist = true;
-                if (listVFTAdresses.size() == 0)
+                if (!doesMethodOverride(curObjWrapperMethod.getObj()))
                 {
-                    Code.mainPc = curObjWrapperMethod.getObj().getAdr();
+                    Tab.chainLocalSymbols(curObjWrapperMethod.getObj());
                 }
-                else
+                curObjWrapperMethod.getObj().setAdr(Code.pc);
+                if (nameOfMethod.equals(METHOD_ENTRY_NAME) && !isInClass)
                 {
-                    Code.fixup(listVFTAdresses.getLast());
+                    TabExt.doesMainExist = true;
+                    if (listVFTAdresses.size() == 0)
+                    {
+                        Code.mainPc = curObjWrapperMethod.getObj().getAdr();
+                    }
+                    else
+                    {
+                        Code.fixup(listVFTAdresses.getLast());
+                    }
                 }
 
+                Code.put(Code.enter);
+                Code.put(curObjWrapperMethod.getObj().getLevel());
+                Code.put(Tab.currentScope().getnVars());
             }
-
-            Code.put(Code.enter);
-            Code.put(curObjWrapperMethod.getObj().getLevel());
-            Code.put(Tab.currentScope().getnVars());
 
             parser.log.debug("Zavrseno prepoznavanje deklaracija lokalnih promen", null);
         :}
         StatementListEpsilon
         BRACE_RIGHT
         {:
-            // Dealocira se stek.
-            //
-            if (retType.getObj().getType() == Tab.noType)
+            if (!retType.isError())
             {
-                Code.put(Code.exit);
-                Code.put(Code.return_);
-            }
-            else
-            {
-                // Error in case of no return.
-                //
-                Code.put(Code.trap);
-                Code.put(1);
+                if (typesEqual(retType.getObj().getType(),Tab.noType))
+                {
+                    Code.put(Code.exit);
+                    Code.put(Code.return_);
+                }
+                else
+                {
+                    // Error in case of no return.
+                    //
+                    Code.put(Code.trap);
+                    Code.put(1);
+                }
             }
 
             Tab.closeScope();
@@ -1929,13 +2071,38 @@ Statement ::=
 
     :}
     |
-    RETURN ExprEpsilon SEMI_COLUMN
+    RETURN:returnObj ExprEpsilon:retVal SEMI_COLUMN
     {:
-        // TODO : return check semantic.
-        // Should exist, are types ok...
-        //
-        Code.put(Code.exit);
-        Code.put(Code.return_);
+        if (curObjWrapperMethod != null)
+        {
+            if (!curObjWrapperMethod.isError())
+            {
+                if (retVal == null)
+                {
+                    if (check_type_and_report(curObjWrapperMethod.getObj(), Tab.noType, retValleft, "RETURN mora da ima povratnu vrednost"))
+                    {
+                        Code.put(Code.exit);
+                        Code.put(Code.return_);
+                    }
+                }
+                else
+                {
+                    if (!retVal.isError())
+                    {
+                        if (check_type_and_report(curObjWrapperMethod.getObj(), retVal.getObj().getType(), retValleft, "RETURN vrednost mora da se slaze po tipu sa povratnom vrednoscu metode/funkcije"))
+                        {
+                            Code.put(Code.exit);
+                            Code.put(Code.return_);
+                        }
+                    }
+                }
+
+            }
+        }
+        else
+        {
+            semantic_error("RETURN mora da bude unutar funkcije/metode", returnObjleft);
+        }
 
         parser.log.debug("Prepoznat RETURN", null);
     :}
@@ -2022,8 +2189,14 @@ ElseStatementEpsilon ::=
         ;
 
 ExprEpsilon ::=
-        Expr
+        Expr:expr
+        {:
+            RESULT = expr;
+        :}
         |
+        {:
+            RESULT = null;
+        :}
         /* epsilon */
         ;
 
@@ -2885,8 +3058,8 @@ Designator ::=
                     Code.load(Tab.find("this"));
                     Code.put(Code.dup);
                 }
-                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
-                    && (!isMethodStatic(curObjWrappFieldOrElem.getObj())) )
+                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth) &&
+                        isMethodVirtual(curObjWrappFieldOrElem.getObj()))
                 {
                     Code.load(Tab.find("this"));
                     curObjWrappFieldOrElem.setVirtual(true);
@@ -2978,10 +3151,7 @@ DotIdentOrBracketExpr ::=
             if (curObjWrappFieldOrElem.isClassType())
             {
                 Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
-                if ( (obj == null)
-                ||
-                ((obj.getKind() != Obj.Meth)
-                || (!isMethodStatic(obj))) )
+                if ( (obj == null) || ((obj.getKind() != Obj.Meth) || (!isMethodStatic(obj))) )
                 {
                     // TODO ispisi
                     RESULT = curObjWrappFieldOrElem.setSemanticError(true);

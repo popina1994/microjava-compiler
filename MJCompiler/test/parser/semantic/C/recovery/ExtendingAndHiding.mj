@@ -1,0 +1,43 @@
+program test
+
+class K1
+{
+	{
+		void v()
+		{
+		}
+		static void s()
+		{
+		}
+	}
+}
+
+class K2 extends K1
+{
+	{
+		void v()
+		{
+		}
+		void v()
+		{
+		}
+		static void s()
+		{
+		}
+		
+		static void v()
+		{
+		}
+	}
+}
+
+class K3 extends int
+{
+}
+
+{
+	void main()
+	{
+	}
+
+}

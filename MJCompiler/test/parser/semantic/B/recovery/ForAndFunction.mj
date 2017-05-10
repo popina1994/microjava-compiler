@@ -21,4 +21,9 @@ program test
 		return 'a';
 	}
 	
+	static int test2()
+	{
+		return 1;
+	}
+	
 }

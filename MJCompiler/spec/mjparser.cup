@@ -25,16 +25,11 @@ parser code {:
             currentIndent.append(indent);
         }
 
-
         protected void previousIndentationLevel() {
             if (currentIndent.length() > 0)
                 currentIndent.setLength(currentIndent.length()-indent.length());
         }
 
-
-        /* (non-Javadoc)
-         * @see rs.etf.pp1.symboltable.test.SymbolTableVisitor#visitObjNode(symboltable.Obj)
-         */
         @Override
         public void visitObjNode(Obj objToVisit) {
             //output.append("[");
@@ -48,6 +43,10 @@ parser code {:
             }
 
             output.append(objToVisit.getName());
+            if (objToVisit.getKind() == Obj.Type && objToVisit.getType().getKind() == Struct.Class)
+            {
+                output.append(", " + objToVisit.getType());
+            }
             output.append(": ");
 
             if ( ((objToVisit.getKind() == Obj.Meth) || (objToVisit.getKind() == Obj.Var) || (objToVisit.getKind() == Obj.Fld)) && (objToVisit.getType().getKind() == Struct.Class))
@@ -63,6 +62,8 @@ parser code {:
             output.append("Adr:" + objToVisit.getAdr());
             output.append(", ");
             output.append("Level:" + objToVisit.getLevel() + " ");
+            output.append(", ");
+            output.append("FormParPos:" + objToVisit.getFpPos() + " ");
 
             if (objToVisit.getKind() == Obj.Meth)
             {
@@ -83,7 +84,6 @@ parser code {:
                         output.append(", overidden method");
                     }
                 }
-
             }
 
             if (objToVisit.getKind() == Obj.Prog || objToVisit.getKind() == Obj.Meth) {
@@ -91,10 +91,10 @@ parser code {:
                 nextIndentationLevel();
             }
 
-
             for (Obj o : objToVisit.getLocalSymbols()) {
                 output.append(currentIndent.toString());
-                if ((objToVisit.getKind() == Obj.Meth) &&(o.getType().getKind() == Struct.Class))
+
+                if ((objToVisit.getKind() == Obj.Meth) && (o.getType().getKind() == Struct.Class))
                 {
                     output.append("Var ");
                     output.append(o.getName());
@@ -105,6 +105,8 @@ parser code {:
                     output.append("Adr:" + o.getAdr());
                     output.append(", ");
                     output.append("Level:" + o.getLevel() + " ");
+                    output.append(", ");
+                    output.append("FormParPos:" + o.getFpPos() + " ");
                 }
                 else
                 {
@@ -117,7 +119,6 @@ parser code {:
                 previousIndentationLevel();
 
             //output.append("]");
-
         }
 
         /* (non-Javadoc)
@@ -163,7 +164,8 @@ parser code {:
                     output.append("char");
                     break;
                 case Struct.Class:
-                    output.append("Class");
+                    output.append("Class ");
+                    output.append(structToVisit.getElemType());
                     break;
                 case Struct.Bool:
                   output.append("bool");
@@ -211,7 +213,6 @@ parser code {:
         boolean semanticError = false;
         boolean syntaxError = false;
         int relOp;
-        boolean isVirtual = false;
 
         public ObjResultWrapper() {}
 
@@ -226,7 +227,6 @@ parser code {:
             objWrapper.setSemanticError(semanticError);
             objWrapper.setSyntaxError(syntaxError);
             objWrapper.setRelOp(relOp);
-            objWrapper.setVirtual(isVirtual);
             return objWrapper;
         }
 
@@ -235,7 +235,6 @@ parser code {:
             setSemanticError(copyFrom.semanticError);
             setSyntaxError(copyFrom.syntaxError);
             setRelOp(copyFrom.relOp);
-            setVirtual(copyFrom.isVirtual);
             obj = copyFrom.obj;
         }
 
@@ -362,16 +361,6 @@ parser code {:
             }
         }
 
-        public boolean isVirtual()
-        {
-            return isVirtual;
-        }
-
-        public void setVirtual(boolean isVirtual)
-        {
-            this.isVirtual = isVirtual;
-        }
-
         public void setRelOp(int relOp)
         {
             this.relOp = relOp;
@@ -457,7 +446,7 @@ parser code {:
 
     public void semantic_error(String msg, int line)
     {
-        semantic_error(msg + "Linija:" + line + ".");
+        semantic_error(msg + ". Linija:" + line + ".");
     }
 
     // Overrideovana MJParser funkcija.
@@ -695,9 +684,6 @@ parser code {:
         return result;
     }
 
-
-
-
     void pushOnCodeStack(LinkedList<LinkedList<Byte>> codeStack, int beginAddress)
     {
         // Oprezno, mozda je jos neophodno azurirati!!!
@@ -814,9 +800,39 @@ parser code {:
         return isBitOnInFpPos(obj, BIT_IS_GLOBAL);
     }
 
+    static void incLastPar(LinkedList<Integer> list)
+    {
+        list.addLast(list.removeLast() + 1);
+    }
+
     static void setParentClass(Obj child, Obj parent)
     {
         child.getType().setElementType(parent.getType());
+    }
+
+    static int countFormPars(Obj methodObj)
+    {
+        int cntArgs = 0;
+        for (Obj o : methodObj.getLocalSymbols())
+        {
+            if (o.getFpPos() != 0)
+            {
+                cntArgs ++;
+            }
+        }
+        return cntArgs;
+    }
+
+    static Obj getFormPar(Obj methObj, int formParIdx)
+    {
+        for (Obj o : methObj.getLocalSymbols())
+        {
+            if (o.getFpPos() == formParIdx)
+            {
+                return o;
+            }
+        }
+        return null;
     }
 
     void initVirtualFunctionTable(Obj objType, LinkedList<Integer> listVFTAdresses)
@@ -860,7 +876,7 @@ parser code {:
             {
                 Tab.insert(it.getKind(), it.getName(), it.getType());
             }
-            else if ( (it.getKind() == Obj.Meth) )
+            else if (it.getKind() == Obj.Meth)
             {
                 Obj methObj = Tab.insert(it.getKind(), it.getName(), it.getType());
                 methObj.setAdr(it.getAdr());
@@ -870,14 +886,16 @@ parser code {:
                 Tab.openScope();
                 for (Obj itPars : it.getLocalSymbols())
                 {
-                    if (itPars.getName()    .equals("this"))
+                    Obj objPar = null;
+                    if (itPars.getName().equals("this"))
                     {
-                        Tab.insert(itPars.getKind(), itPars.getName(), childType);
+                        objPar = Tab.insert(itPars.getKind(), itPars.getName(), childType);
                     }
                     else
                     {
-                        Tab.insert(itPars.getKind(), itPars.getName(), itPars.getType());
+                        objPar = Tab.insert(itPars.getKind(), itPars.getName(), itPars.getType());
                     }
+                    objPar.setFpPos(itPars.getFpPos());
                 }
                 Tab.chainLocalSymbols(methObj);
                 Tab.closeScope();
@@ -918,17 +936,16 @@ action code {:
     LinkedList<LinkedList<Integer>> listOfListOfBreaksInFor = new LinkedList<LinkedList<Integer>>();
     LinkedList<LinkedList<Integer>> listOfListOfContinuesInFor = new LinkedList<LinkedList<Integer>>();
     LinkedList<Integer> listVFTAdresses = new LinkedList<Integer>();
-    LinkedList<Boolean> listIsVirtualFunction = new LinkedList<Boolean>();
     Integer forLastDesigantorBeginAddress = null;
-
+    LinkedList<ObjResultWrapper> listCurObjWrapperFuncCall = new LinkedList<ObjResultWrapper>();
+    LinkedList<Integer> listActParCnt = new LinkedList<>();
     boolean globalVar = false;
     boolean localVar = false;
     boolean formVar = false;
     boolean fieldVar = false;
     boolean isInClass = false;
     boolean addThis = false;
-    int formParCnt = 0;
-
+    Obj lenObj = null;
 :}
 
 scan with {:
@@ -979,7 +996,13 @@ non terminal ObjResultWrapper Type;
 non terminal Statement, ElseStatementEpsilon, IfConditionParRight;
 non terminal ObjResultWrapper ExprEpsilon;
 non terminal Obj CommaConstNumEpsilon;
-non terminal DesignatorStatement, ActParsEpsilon, ActPars, CommaExprListEpsilon, CommaExprList, CommaExpr, DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
+non terminal DesignatorStatement;
+non terminal ObjResultWrapper ActParsEpsilon;
+non terminal ObjResultWrapper ActPars;
+non terminal ObjResultWrapper CommaExprListEpsilon;
+non terminal ObjResultWrapper CommaExprList;
+non terminal ObjResultWrapper CommaExpr;
+non terminal DesignatorStatementOrAssignErrorSemi, DesignatorStatementOrAssignOrErrorParRight, AssingmentStatement, DesignatorStatementOrAssign, AssingmentStatementOrErrorSemi;
 non terminal ObjResultWrapper ForConditionSemi;
 non terminal ObjResultWrapper DesignatorIncOrDec;
 non terminal ObjResultWrapper DesignatorFuncCall;
@@ -1028,6 +1051,8 @@ Program ::=
         eolObj.setAdr((int)'\n');
 
         Obj chrObj = Tab.find("chr");
+        Obj chrPar = chrObj.getLocalSymbols().iterator().next();
+        chrPar.setFpPos(1);
         chrObj.setAdr(Code.pc);
         Code.put(Code.enter);
         Code.put(1);
@@ -1038,6 +1063,8 @@ Program ::=
         Code.put(Code.return_);
 
         Obj ordObj = Tab.find("ord");
+        Obj ordPar = ordObj.getLocalSymbols().iterator().next();
+        ordPar.setFpPos(1);
         ordObj.setAdr(Code.pc);
         Code.put(Code.enter);
         Code.put(1);
@@ -1046,7 +1073,9 @@ Program ::=
         Code.put(Code.exit);
         Code.put(Code.return_);
 
-        Obj lenObj = Tab.find("len");
+        lenObj = Tab.find("len");
+        Obj lenPar = lenObj.getLocalSymbols().iterator().next();
+        lenPar.setFpPos(1);
         lenObj.setAdr(Code.pc);
         Code.put(Code.enter);
         Code.put(1);
@@ -1305,9 +1334,6 @@ ConstChar ::=
 
 /************************* VarDecl **************************/
 /************************************************************/
-
-
-
 VarExpr ::=
     IDENT:nameOfVar
     BracketEpsilon:isArray
@@ -1330,7 +1356,6 @@ VarExpr ::=
                 {
                     ParserCnt.globalArrayDeclCnt++;
                 }
-
             }
             else if (localVar)
             {
@@ -1372,13 +1397,11 @@ VarExpr ::=
             if (!find_double_and_report_search(nameOfVar, nameOfVarleft, message)
                 && (typeVar != null) )
             {
-
                 varObj = Tab.insert(objType, nameOfVar, typeVar);
                 if (formVar)
                 {
                     varObj.setAdr(Tab.currentScope().getnVars() - 1);
-                    // TODO : think about formPar
-                    //
+                    varObj.setFpPos(Tab.currentScope().getnVars());
                 }
                 else if (globalVar)
                 {
@@ -1648,6 +1671,7 @@ MethodDecl ::=
                 {
                     Obj varObj = Tab.insert(Obj.Var, "this", curObjWrapperClass.getObj().getType());
                     varObj.setAdr(0);
+                    varObj.setFpPos(1);
                     addThis = false;
                 }
             }
@@ -1945,7 +1969,6 @@ Statement ::=
         Code.putFalseJump(Code.ne, 0);
         int adrConditionFalse = Code.pc - 2;
         listAdrForConditionFalse.addLast(adrConditionFalse);
-
 
         forLastDesigantorBeginAddress = Code.pc;
     :}
@@ -2310,57 +2333,87 @@ IncOrDec ::=
     ;
 
 DesignatorFuncCall ::=
-        Designator:func
-        PAR_LEFT
-        {:
-            // TODO: add semantic errors.
-            if (func.isVirtual())
+    Designator:func
+    PAR_LEFT
+    {:
+        listActParCnt.addLast(0);
+        if (!func.isError())
+        {
+            if (func.getObj().getKind() == Obj.Meth)
             {
-                // adr
-                Code.put(Code.dup);
-
-                // adr adr
-            }
-            listIsVirtualFunction.addLast(func.isVirtual());
-        :}
-        ActParsEpsilon PAR_RIGHT
-        {:
-            if (func.isVirtual())
-            {
-                String funcName = func.getObj().getName();
-                // VFT_POINTER
-                Code.put(Code.getfield);
-                Code.put2(0);
-                Code.put(Code.invokevirtual);
-                for (int idx = 0; idx < funcName.length(); idx ++)
+                if (isMethodVirtual(func.getObj()))
                 {
-                    Code.put4((int)funcName.charAt(idx));
-                }
-                Code.put4(-1);
+                    incLastPar(listActParCnt);
+                    // adr
+                    Code.put(Code.dup);
 
+                    // adr adr
+                }
             }
             else
             {
-                Code.put(Code.call);
-                // Because Code.call is put then pc  = pc + 1.
-                //
-                int adr = func.getObj().getAdr() - Code.pc + 1;
-                Code.put2(adr);
+                semantic_error("Ovde treba da bude globalna funkcija/staticka metoda/virtuelna metoda", funcleft);
+                func.setSemanticError(true);
             }
-            listIsVirtualFunction.removeLast();
-            RESULT = func;
-        :}
-        |
-        Designator PAR_LEFT error PAR_RIGHT
-        {:
-           parser.report_error("Uspesan oporavak od greske kod poziva metode/funkcije/staticke metode,  SEMI_COLUMN je resio stvar" , null);
-           RESULT = (new ObjResultWrapper()).setSyntaxError(true);
-        :}
-        ;
+        }
+        listCurObjWrapperFuncCall.addLast(func);
+    :}
 
+    ActParsEpsilon PAR_RIGHT
+    {:
+        if (!func.isError())
+        {
+            if (listActParCnt.getLast() == countFormPars(func.getObj()))
+            {
+                if (isMethodVirtual(func.getObj()))
+                {
+                    String funcName = func.getObj().getName();
+                    // VFT_POINTER
+                    Code.put(Code.getfield);
+                    Code.put2(0);
+                    Code.put(Code.invokevirtual);
+                    for (int idx = 0; idx < funcName.length(); idx ++)
+                    {
+                        Code.put4((int)funcName.charAt(idx));
+                    }
+                    Code.put4(-1);
+                }
+                else
+                {
+                    Code.put(Code.call);
+                    // Because Code.call is put then pc  = pc + 1.
+                    //
+                    int adr = func.getObj().getAdr() - Code.pc + 1;
+                    Code.put2(adr);
+                }
+            }
+            else
+            {
+                semantic_error("Broj argumenata u pozivu funkcije nije isti kao broj argumenata u definiciji.", funcleft);
+                func.setSemanticError(true);
+            }
+        }
+        listCurObjWrapperFuncCall.removeLast();
+        listActParCnt.removeLast();
+        RESULT = func;
+    :}
+    |
+    Designator PAR_LEFT error PAR_RIGHT
+    {:
+       parser.report_error("Uspesan oporavak od greske kod poziva metode/funkcije/staticke metode,  PAR_RIGHT je resio stvar" , null);
+       RESULT = (new ObjResultWrapper()).setSyntaxError(true);
+    :}
+    ;
+// list of Obj of Method.
 ActParsEpsilon ::=
-        ActPars
+        ActPars:actPar
+        {:
+            RESULT = actPar;
+        :}
         |
+        {:
+            RESULT = null;
+        :}
         /* epsilon */
         ;
 
@@ -2502,9 +2555,12 @@ ExpOrErrorSemi ::=
 /******************* ActPars  *******************************/
 /************************************************************/
 ActPars ::=
-        Expr:expr
-        {:
-            if (listIsVirtualFunction.getLast())
+    Expr:expr
+    {:
+        incLastPar(listActParCnt);
+        if (!listCurObjWrapperFuncCall.getLast().isError())
+        {
+            if(isMethodVirtual(listCurObjWrapperFuncCall.getLast().getObj()))
             {
                 // adr adr par
                 Code.put(Code.dup_x1);
@@ -2512,24 +2568,60 @@ ActPars ::=
                 Code.put(Code.pop);
                 //adr par adr
             }
-        :}
-        CommaExprListEpsilon
-        ;
+            if (!expr.isError())
+            {
+                Obj formParOnIdx = getFormPar(listCurObjWrapperFuncCall.getLast().getObj(),
+                                                    listActParCnt.getLast());
+                if ( (formParOnIdx == null)
+                    || ( (!typesCompatibile(expr.getObj().getType(), formParOnIdx.getType()))
+                        && ((listCurObjWrapperFuncCall.getLast().getObj() != lenObj)
+                            || !expr.isArray())) )
+                {
+                    semantic_error("Tipovi nisu kompatibilni, parametar:" + listActParCnt.getLast(), exprleft);
+                    expr.setSemanticError(true);
+                }
+
+            }
+        }
+        {
+            expr.propagateError(listCurObjWrapperFuncCall.getLast());
+        }
+    :}
+    CommaExprListEpsilon:exprList
+    {:
+        RESULT = expr.propagateError(exprList);
+    :}
+    ;
 
 CommaExprListEpsilon ::=
-        CommaExprList
+        CommaExprList:exprList
+        {:
+            RESULT = exprList;
+        :}
         |
+        {:
+            RESULT = null;
+        :}
         /* epsilon */
         ;
 CommaExprList ::=
-        CommaExprList CommaExpr
+        CommaExprList:exprList CommaExpr:expr
+        {:
+            RESULT = exprList.propagateError(expr);
+        :}
         |
-        CommaExpr
+        CommaExpr:expr
+        {:
+            RESULT = expr;
+        :}
         ;
 CommaExpr ::=
-        COMMA Expr:expr
-        {:
-            if (listIsVirtualFunction.getLast())
+    COMMA Expr:expr
+    {:
+        incLastPar(listActParCnt);
+        if (!listCurObjWrapperFuncCall.getLast().isError())
+        {
+            if(isMethodVirtual(listCurObjWrapperFuncCall.getLast().getObj()))
             {
                 // adr adr par
                 Code.put(Code.dup_x1);
@@ -2537,8 +2629,27 @@ CommaExpr ::=
                 Code.put(Code.pop);
                 //adr par adr
             }
-        :}
-        ;
+            if (!expr.isError())
+            {
+                Obj formParOnIdx = getFormPar(listCurObjWrapperFuncCall.getLast().getObj(),
+                                    listActParCnt.getLast());
+                if ( (formParOnIdx == null)
+                    || ( (!typesCompatibile(expr.getObj().getType(), formParOnIdx.getType()))
+                        && ((listCurObjWrapperFuncCall.getLast().getObj() != lenObj)
+                            || !expr.isArray())) )
+                {
+                    semantic_error("Tipovi nisu kompatibilni, parametar:"+ listActParCnt.getLast(), exprleft);
+                    expr.setSemanticError(true);
+                }
+
+            }
+            RESULT = expr;
+        }
+        {
+            RESULT = expr.propagateError(listCurObjWrapperFuncCall.getLast());
+        }
+    :}
+    ;
 
 /******************* Condition  *****************************/
 /************************************************************/
@@ -3025,16 +3136,36 @@ Designator ::=
         {
             if (isInClass)
             {
-                if (curObjWrappFieldOrElem.isField())
+                if (!curObjWrapperMethod.isError())
                 {
-                    Code.load(Tab.find("this"));
-                    Code.put(Code.dup);
+                    if (isMethodStatic(curObjWrapperMethod.getObj()))
+                    {
+                        if (curObjWrappFieldOrElem.isField() ||
+                         ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
+                            && isMethodVirtual(curObjWrappFieldOrElem.getObj())))
+                        {
+                            semantic_error("Ne moze se referncirati polje/virtuelna metoda iz staticke metode", nameleft);
+                            curObjWrappFieldOrElem.setSemanticError(true);
+                        }
+                    }
+                    else
+                    {
+                        if (curObjWrappFieldOrElem.isField())
+                        {
+                            Code.load(Tab.find("this"));
+                            Code.put(Code.dup);
+                        }
+                        else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
+                            && isMethodVirtual(curObjWrappFieldOrElem.getObj()))
+                        {
+                            Code.load(Tab.find("this"));
+                            //curObjWrappFieldOrElem.setVirtual(true);
+                        }
+                    }
                 }
-                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
-                    && isMethodVirtual(curObjWrappFieldOrElem.getObj()))
+                else
                 {
-                    Code.load(Tab.find("this"));
-                    curObjWrappFieldOrElem.setVirtual(true);
+                    curObjWrappFieldOrElem.propagateError(curObjWrapperMethod);
                 }
             }
 
@@ -3183,7 +3314,7 @@ DotIdentOrBracketExpr ::=
                         else
                         {
                             curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
-                            curObjWrappFieldOrElem.setVirtual(true);
+                            //curObjWrappFieldOrElem.setVirtual(true);
                             RESULT = curObjWrappFieldOrElem;
                         }
                     }

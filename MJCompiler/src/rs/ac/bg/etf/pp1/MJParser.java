@@ -832,16 +832,11 @@ public class MJParser extends java_cup.runtime.lr_parser {
             currentIndent.append(indent);
         }
 
-
         protected void previousIndentationLevel() {
             if (currentIndent.length() > 0)
                 currentIndent.setLength(currentIndent.length()-indent.length());
         }
 
-
-        /* (non-Javadoc)
-         * @see rs.etf.pp1.symboltable.test.SymbolTableVisitor#visitObjNode(symboltable.Obj)
-         */
         @Override
         public void visitObjNode(Obj objToVisit) {
             //output.append("[");
@@ -855,6 +850,10 @@ public class MJParser extends java_cup.runtime.lr_parser {
             }
 
             output.append(objToVisit.getName());
+            if (objToVisit.getKind() == Obj.Type && objToVisit.getType().getKind() == Struct.Class)
+            {
+                output.append(", " + objToVisit.getType());
+            }
             output.append(": ");
 
             if ( ((objToVisit.getKind() == Obj.Meth) || (objToVisit.getKind() == Obj.Var) || (objToVisit.getKind() == Obj.Fld)) && (objToVisit.getType().getKind() == Struct.Class))
@@ -870,6 +869,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
             output.append("Adr:" + objToVisit.getAdr());
             output.append(", ");
             output.append("Level:" + objToVisit.getLevel() + " ");
+            output.append(", ");
+            output.append("FormParPos:" + objToVisit.getFpPos() + " ");
 
             if (objToVisit.getKind() == Obj.Meth)
             {
@@ -890,7 +891,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
                         output.append(", overidden method");
                     }
                 }
-
             }
 
             if (objToVisit.getKind() == Obj.Prog || objToVisit.getKind() == Obj.Meth) {
@@ -898,10 +898,10 @@ public class MJParser extends java_cup.runtime.lr_parser {
                 nextIndentationLevel();
             }
 
-
             for (Obj o : objToVisit.getLocalSymbols()) {
                 output.append(currentIndent.toString());
-                if ((objToVisit.getKind() == Obj.Meth) &&(o.getType().getKind() == Struct.Class))
+
+                if ((objToVisit.getKind() == Obj.Meth) && (o.getType().getKind() == Struct.Class))
                 {
                     output.append("Var ");
                     output.append(o.getName());
@@ -912,6 +912,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
                     output.append("Adr:" + o.getAdr());
                     output.append(", ");
                     output.append("Level:" + o.getLevel() + " ");
+                    output.append(", ");
+                    output.append("FormParPos:" + o.getFpPos() + " ");
                 }
                 else
                 {
@@ -924,7 +926,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
                 previousIndentationLevel();
 
             //output.append("]");
-
         }
 
         /* (non-Javadoc)
@@ -970,7 +971,8 @@ public class MJParser extends java_cup.runtime.lr_parser {
                     output.append("char");
                     break;
                 case Struct.Class:
-                    output.append("Class");
+                    output.append("Class ");
+                    output.append(structToVisit.getElemType());
                     break;
                 case Struct.Bool:
                   output.append("bool");
@@ -1018,7 +1020,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
         boolean semanticError = false;
         boolean syntaxError = false;
         int relOp;
-        boolean isVirtual = false;
 
         public ObjResultWrapper() {}
 
@@ -1033,7 +1034,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
             objWrapper.setSemanticError(semanticError);
             objWrapper.setSyntaxError(syntaxError);
             objWrapper.setRelOp(relOp);
-            objWrapper.setVirtual(isVirtual);
             return objWrapper;
         }
 
@@ -1042,7 +1042,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
             setSemanticError(copyFrom.semanticError);
             setSyntaxError(copyFrom.syntaxError);
             setRelOp(copyFrom.relOp);
-            setVirtual(copyFrom.isVirtual);
             obj = copyFrom.obj;
         }
 
@@ -1169,16 +1168,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
             }
         }
 
-        public boolean isVirtual()
-        {
-            return isVirtual;
-        }
-
-        public void setVirtual(boolean isVirtual)
-        {
-            this.isVirtual = isVirtual;
-        }
-
         public void setRelOp(int relOp)
         {
             this.relOp = relOp;
@@ -1264,7 +1253,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
 
     public void semantic_error(String msg, int line)
     {
-        semantic_error(msg + "Linija:" + line + ".");
+        semantic_error(msg + ". Linija:" + line + ".");
     }
 
     // Overrideovana MJParser funkcija.
@@ -1502,9 +1491,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
         return result;
     }
 
-
-
-
     void pushOnCodeStack(LinkedList<LinkedList<Byte>> codeStack, int beginAddress)
     {
         // Oprezno, mozda je jos neophodno azurirati!!!
@@ -1621,9 +1607,39 @@ public class MJParser extends java_cup.runtime.lr_parser {
         return isBitOnInFpPos(obj, BIT_IS_GLOBAL);
     }
 
+    static void incLastPar(LinkedList<Integer> list)
+    {
+        list.addLast(list.removeLast() + 1);
+    }
+
     static void setParentClass(Obj child, Obj parent)
     {
         child.getType().setElementType(parent.getType());
+    }
+
+    static int countFormPars(Obj methodObj)
+    {
+        int cntArgs = 0;
+        for (Obj o : methodObj.getLocalSymbols())
+        {
+            if (o.getFpPos() != 0)
+            {
+                cntArgs ++;
+            }
+        }
+        return cntArgs;
+    }
+
+    static Obj getFormPar(Obj methObj, int formParIdx)
+    {
+        for (Obj o : methObj.getLocalSymbols())
+        {
+            if (o.getFpPos() == formParIdx)
+            {
+                return o;
+            }
+        }
+        return null;
     }
 
     void initVirtualFunctionTable(Obj objType, LinkedList<Integer> listVFTAdresses)
@@ -1667,7 +1683,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
             {
                 Tab.insert(it.getKind(), it.getName(), it.getType());
             }
-            else if ( (it.getKind() == Obj.Meth) )
+            else if (it.getKind() == Obj.Meth)
             {
                 Obj methObj = Tab.insert(it.getKind(), it.getName(), it.getType());
                 methObj.setAdr(it.getAdr());
@@ -1677,14 +1693,16 @@ public class MJParser extends java_cup.runtime.lr_parser {
                 Tab.openScope();
                 for (Obj itPars : it.getLocalSymbols())
                 {
-                    if (itPars.getName()    .equals("this"))
+                    Obj objPar = null;
+                    if (itPars.getName().equals("this"))
                     {
-                        Tab.insert(itPars.getKind(), itPars.getName(), childType);
+                        objPar = Tab.insert(itPars.getKind(), itPars.getName(), childType);
                     }
                     else
                     {
-                        Tab.insert(itPars.getKind(), itPars.getName(), itPars.getType());
+                        objPar = Tab.insert(itPars.getKind(), itPars.getName(), itPars.getType());
                     }
+                    objPar.setFpPos(itPars.getFpPos());
                 }
                 Tab.chainLocalSymbols(methObj);
                 Tab.closeScope();
@@ -1729,17 +1747,16 @@ class CUP$MJParser$actions {
     LinkedList<LinkedList<Integer>> listOfListOfBreaksInFor = new LinkedList<LinkedList<Integer>>();
     LinkedList<LinkedList<Integer>> listOfListOfContinuesInFor = new LinkedList<LinkedList<Integer>>();
     LinkedList<Integer> listVFTAdresses = new LinkedList<Integer>();
-    LinkedList<Boolean> listIsVirtualFunction = new LinkedList<Boolean>();
     Integer forLastDesigantorBeginAddress = null;
-
+    LinkedList<ObjResultWrapper> listCurObjWrapperFuncCall = new LinkedList<ObjResultWrapper>();
+    LinkedList<Integer> listActParCnt = new LinkedList<>();
     boolean globalVar = false;
     boolean localVar = false;
     boolean formVar = false;
     boolean fieldVar = false;
     boolean isInClass = false;
     boolean addThis = false;
-    int formParCnt = 0;
-
+    Obj lenObj = null;
 
   private final MJParser parser;
 
@@ -1788,6 +1805,8 @@ class CUP$MJParser$actions {
         eolObj.setAdr((int)'\n');
 
         Obj chrObj = Tab.find("chr");
+        Obj chrPar = chrObj.getLocalSymbols().iterator().next();
+        chrPar.setFpPos(1);
         chrObj.setAdr(Code.pc);
         Code.put(Code.enter);
         Code.put(1);
@@ -1798,6 +1817,8 @@ class CUP$MJParser$actions {
         Code.put(Code.return_);
 
         Obj ordObj = Tab.find("ord");
+        Obj ordPar = ordObj.getLocalSymbols().iterator().next();
+        ordPar.setFpPos(1);
         ordObj.setAdr(Code.pc);
         Code.put(Code.enter);
         Code.put(1);
@@ -1806,7 +1827,9 @@ class CUP$MJParser$actions {
         Code.put(Code.exit);
         Code.put(Code.return_);
 
-        Obj lenObj = Tab.find("len");
+        lenObj = Tab.find("len");
+        Obj lenPar = lenObj.getLocalSymbols().iterator().next();
+        lenPar.setFpPos(1);
         lenObj.setAdr(Code.pc);
         Code.put(Code.enter);
         Code.put(1);
@@ -2351,7 +2374,6 @@ class CUP$MJParser$actions {
                 {
                     ParserCnt.globalArrayDeclCnt++;
                 }
-
             }
             else if (localVar)
             {
@@ -2393,13 +2415,11 @@ class CUP$MJParser$actions {
             if (!find_double_and_report_search(nameOfVar, nameOfVarleft, message)
                 && (typeVar != null) )
             {
-
                 varObj = Tab.insert(objType, nameOfVar, typeVar);
                 if (formVar)
                 {
                     varObj.setAdr(Tab.currentScope().getnVars() - 1);
-                    // TODO : think about formPar
-                    //
+                    varObj.setFpPos(Tab.currentScope().getnVars());
                 }
                 else if (globalVar)
                 {
@@ -2940,6 +2960,7 @@ class CUP$MJParser$actions {
                 {
                     Obj varObj = Tab.insert(Obj.Var, "this", curObjWrapperClass.getObj().getType());
                     varObj.setAdr(0);
+                    varObj.setFpPos(1);
                     addThis = false;
                 }
             }
@@ -3570,7 +3591,6 @@ class CUP$MJParser$actions {
         Code.putFalseJump(Code.ne, 0);
         int adrConditionFalse = Code.pc - 2;
         listAdrForConditionFalse.addLast(adrConditionFalse);
-
 
         forLastDesigantorBeginAddress = Code.pc;
     
@@ -4222,16 +4242,28 @@ class CUP$MJParser$actions {
 		int funcright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
 		ObjResultWrapper func = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 
-            // TODO: add semantic errors.
-            if (func.isVirtual())
+        listActParCnt.addLast(0);
+        if (!func.isError())
+        {
+            if (func.getObj().getKind() == Obj.Meth)
             {
-                // adr
-                Code.put(Code.dup);
+                if (isMethodVirtual(func.getObj()))
+                {
+                    incLastPar(listActParCnt);
+                    // adr
+                    Code.put(Code.dup);
 
-                // adr adr
+                    // adr adr
+                }
             }
-            listIsVirtualFunction.addLast(func.isVirtual());
-        
+            else
+            {
+                semantic_error("Ovde treba da bude globalna funkcija/staticka metoda/virtuelna metoda", funcleft);
+                func.setSemanticError(true);
+            }
+        }
+        listCurObjWrapperFuncCall.addLast(func);
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$28",118, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4246,31 +4278,42 @@ class CUP$MJParser$actions {
 		int funcright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).right;
 		ObjResultWrapper func = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)).value;
 		
-            if (func.isVirtual())
+        if (!func.isError())
+        {
+            if (listActParCnt.getLast() == countFormPars(func.getObj()))
             {
-                String funcName = func.getObj().getName();
-                // VFT_POINTER
-                Code.put(Code.getfield);
-                Code.put2(0);
-                Code.put(Code.invokevirtual);
-                for (int idx = 0; idx < funcName.length(); idx ++)
+                if (isMethodVirtual(func.getObj()))
                 {
-                    Code.put4((int)funcName.charAt(idx));
+                    String funcName = func.getObj().getName();
+                    // VFT_POINTER
+                    Code.put(Code.getfield);
+                    Code.put2(0);
+                    Code.put(Code.invokevirtual);
+                    for (int idx = 0; idx < funcName.length(); idx ++)
+                    {
+                        Code.put4((int)funcName.charAt(idx));
+                    }
+                    Code.put4(-1);
                 }
-                Code.put4(-1);
-
+                else
+                {
+                    Code.put(Code.call);
+                    // Because Code.call is put then pc  = pc + 1.
+                    //
+                    int adr = func.getObj().getAdr() - Code.pc + 1;
+                    Code.put2(adr);
+                }
             }
             else
             {
-                Code.put(Code.call);
-                // Because Code.call is put then pc  = pc + 1.
-                //
-                int adr = func.getObj().getAdr() - Code.pc + 1;
-                Code.put2(adr);
+                semantic_error("Broj argumenata u pozivu funkcije nije isti kao broj argumenata u definiciji.", funcleft);
+                func.setSemanticError(true);
             }
-            listIsVirtualFunction.removeLast();
-            RESULT = func;
-        
+        }
+        listCurObjWrapperFuncCall.removeLast();
+        listActParCnt.removeLast();
+        RESULT = func;
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DesignatorFuncCall",64, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-4)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4280,9 +4323,9 @@ class CUP$MJParser$actions {
             {
               ObjResultWrapper RESULT =null;
 		
-           parser.report_error("Uspesan oporavak od greske kod poziva metode/funkcije/staticke metode,  SEMI_COLUMN je resio stvar" , null);
-           RESULT = (new ObjResultWrapper()).setSyntaxError(true);
-        
+       parser.report_error("Uspesan oporavak od greske kod poziva metode/funkcije/staticke metode,  PAR_RIGHT je resio stvar" , null);
+       RESULT = (new ObjResultWrapper()).setSyntaxError(true);
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("DesignatorFuncCall",64, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-3)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4290,8 +4333,13 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 162: // ActParsEpsilon ::= ActPars 
             {
-              Object RESULT =null;
-
+              ObjResultWrapper RESULT =null;
+		int actParleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int actParright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper actPar = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+            RESULT = actPar;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ActParsEpsilon",52, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4299,8 +4347,10 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 163: // ActParsEpsilon ::= 
             {
-              Object RESULT =null;
-
+              ObjResultWrapper RESULT =null;
+		
+            RESULT = null;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ActParsEpsilon",52, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4510,12 +4560,15 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 170: // NT$31 ::= 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
-            if (listIsVirtualFunction.getLast())
+        incLastPar(listActParCnt);
+        if (!listCurObjWrapperFuncCall.getLast().isError())
+        {
+            if(isMethodVirtual(listCurObjWrapperFuncCall.getLast().getObj()))
             {
                 // adr adr par
                 Code.put(Code.dup_x1);
@@ -4523,7 +4576,25 @@ class CUP$MJParser$actions {
                 Code.put(Code.pop);
                 //adr par adr
             }
-        
+            if (!expr.isError())
+            {
+                Obj formParOnIdx = getFormPar(listCurObjWrapperFuncCall.getLast().getObj(),
+                                                    listActParCnt.getLast());
+                if ( (formParOnIdx == null)
+                    || ( (!typesCompatibile(expr.getObj().getType(), formParOnIdx.getType()))
+                        && ((listCurObjWrapperFuncCall.getLast().getObj() != lenObj)
+                            || !expr.isArray())) )
+                {
+                    semantic_error("Tipovi nisu kompatibilni, parametar:" + listActParCnt.getLast(), exprleft);
+                    expr.setSemanticError(true);
+                }
+
+            }
+        }
+        {
+            expr.propagateError(listCurObjWrapperFuncCall.getLast());
+        }
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$31",121, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4531,13 +4602,18 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 171: // ActPars ::= Expr NT$31 CommaExprListEpsilon 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
               // propagate RESULT from NT$31
-                RESULT = (Object) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
+                RESULT = (ObjResultWrapper) ((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).left;
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)).value;
-
+		int exprListleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprListright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper exprList = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+        RESULT = expr.propagateError(exprList);
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("ActPars",53, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4545,8 +4621,13 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 172: // CommaExprListEpsilon ::= CommaExprList 
             {
-              Object RESULT =null;
-
+              ObjResultWrapper RESULT =null;
+		int exprListleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprListright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper exprList = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+            RESULT = exprList;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("CommaExprListEpsilon",54, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4554,8 +4635,10 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 173: // CommaExprListEpsilon ::= 
             {
-              Object RESULT =null;
-
+              ObjResultWrapper RESULT =null;
+		
+            RESULT = null;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("CommaExprListEpsilon",54, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4563,8 +4646,16 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 174: // CommaExprList ::= CommaExprList CommaExpr 
             {
-              Object RESULT =null;
-
+              ObjResultWrapper RESULT =null;
+		int exprListleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).left;
+		int exprListright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
+		ObjResultWrapper exprList = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
+		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+            RESULT = exprList.propagateError(expr);
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("CommaExprList",55, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4572,8 +4663,13 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 175: // CommaExprList ::= CommaExpr 
             {
-              Object RESULT =null;
-
+              ObjResultWrapper RESULT =null;
+		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
+		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
+		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
+		
+            RESULT = expr;
+        
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("CommaExprList",55, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -4581,12 +4677,15 @@ class CUP$MJParser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 176: // CommaExpr ::= COMMA Expr 
             {
-              Object RESULT =null;
+              ObjResultWrapper RESULT =null;
 		int exprleft = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).left;
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 		
-            if (listIsVirtualFunction.getLast())
+        incLastPar(listActParCnt);
+        if (!listCurObjWrapperFuncCall.getLast().isError())
+        {
+            if(isMethodVirtual(listCurObjWrapperFuncCall.getLast().getObj()))
             {
                 // adr adr par
                 Code.put(Code.dup_x1);
@@ -4594,7 +4693,26 @@ class CUP$MJParser$actions {
                 Code.put(Code.pop);
                 //adr par adr
             }
-        
+            if (!expr.isError())
+            {
+                Obj formParOnIdx = getFormPar(listCurObjWrapperFuncCall.getLast().getObj(),
+                                    listActParCnt.getLast());
+                if ( (formParOnIdx == null)
+                    || ( (!typesCompatibile(expr.getObj().getType(), formParOnIdx.getType()))
+                        && ((listCurObjWrapperFuncCall.getLast().getObj() != lenObj)
+                            || !expr.isArray())) )
+                {
+                    semantic_error("Tipovi nisu kompatibilni, parametar:"+ listActParCnt.getLast(), exprleft);
+                    expr.setSemanticError(true);
+                }
+
+            }
+            RESULT = expr;
+        }
+        {
+            RESULT = expr.propagateError(listCurObjWrapperFuncCall.getLast());
+        }
+    
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("CommaExpr",56, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
           return CUP$MJParser$result;
@@ -5317,16 +5435,36 @@ class CUP$MJParser$actions {
         {
             if (isInClass)
             {
-                if (curObjWrappFieldOrElem.isField())
+                if (!curObjWrapperMethod.isError())
                 {
-                    Code.load(Tab.find("this"));
-                    Code.put(Code.dup);
+                    if (isMethodStatic(curObjWrapperMethod.getObj()))
+                    {
+                        if (curObjWrappFieldOrElem.isField() ||
+                         ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
+                            && isMethodVirtual(curObjWrappFieldOrElem.getObj())))
+                        {
+                            semantic_error("Ne moze se referncirati polje/virtuelna metoda iz staticke metode", nameleft);
+                            curObjWrappFieldOrElem.setSemanticError(true);
+                        }
+                    }
+                    else
+                    {
+                        if (curObjWrappFieldOrElem.isField())
+                        {
+                            Code.load(Tab.find("this"));
+                            Code.put(Code.dup);
+                        }
+                        else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
+                            && isMethodVirtual(curObjWrappFieldOrElem.getObj()))
+                        {
+                            Code.load(Tab.find("this"));
+                            //curObjWrappFieldOrElem.setVirtual(true);
+                        }
+                    }
                 }
-                else if ((curObjWrappFieldOrElem.getObj().getKind() == Obj.Meth)
-                    && isMethodVirtual(curObjWrappFieldOrElem.getObj()))
+                else
                 {
-                    Code.load(Tab.find("this"));
-                    curObjWrappFieldOrElem.setVirtual(true);
+                    curObjWrappFieldOrElem.propagateError(curObjWrapperMethod);
                 }
             }
 
@@ -5532,7 +5670,7 @@ class CUP$MJParser$actions {
                         else
                         {
                             curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
-                            curObjWrappFieldOrElem.setVirtual(true);
+                            //curObjWrappFieldOrElem.setVirtual(true);
                             RESULT = curObjWrappFieldOrElem;
                         }
                     }

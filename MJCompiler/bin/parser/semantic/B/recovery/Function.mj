@@ -1,0 +1,37 @@
+program SpecialCharacters
+
+class K1
+{
+}
+
+class K2
+{
+	int a[];
+	K1 k;
+	K1 k1[];
+	{
+		void test(int a, char b, bool c)
+		int r;
+		{
+		}
+	}
+}
+
+{
+	void main() 
+	K2 k2;{
+		len(k2);
+		chr(k2);
+		ord(k2);
+		print(1, 1);
+		print('\t');
+		print(1, 1);
+		print('\n');
+		print(1, 1);
+		k2 = new K2;
+		k2.test();
+		len(k2.k1);
+		len(k2.k);
+		k2.test('c', 1, 3);
+	}
+}

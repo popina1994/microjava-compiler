@@ -1207,11 +1207,14 @@ public class MJParser extends java_cup.runtime.lr_parser {
 
         // NIVO B
         static int globalAndStaticMethodCnt = 0;
-        //static int l
+        static int blockCnt = 0;
+        static int funcCallInMainCnt = 0;
+        static int formArgFunCnt = 0;
 
-        static boolean inVarDeclGlobalScope = false;
-        static boolean inMethodDeclGlobalScope = false;
-        static boolean inMethodEntryGlobalScope = false;
+        // NIVO C
+        static int classCnt = 0;
+        static int methodCnt = 0;
+        static int fieldCnt = 0;
     }
 
     boolean errorDetected = false;
@@ -1875,8 +1878,18 @@ class CUP$MJParser$actions {
         parser.report_info("Broj definicija lokalnih promenljivih u main funkciji " + ParserCnt.localVarDefMainCnt, null);
         parser.report_info("Broj definicija globalnih konstanti " + ParserCnt.globalConstDefCnt, null);
         parser.report_info("Broj deklaracija globalnih nizova " + ParserCnt.globalArrayDeclCnt, null);
+
         parser.report_info("******************* NIVO B**********************", null);
         parser.report_info("Broj definicija globalnih i statickih funkcija unutrasnjih klasa " + ParserCnt.globalAndStaticMethodCnt, null);
+        parser.report_info("Broj blokova naredbi " + ParserCnt.blockCnt, null);
+        parser.report_info("Broj poziva funkcija u telu main methode " + ParserCnt.funcCallInMainCnt, null);
+        parser.report_info("Broj deklaracija formalnih argumenata funkcija " + ParserCnt.formArgFunCnt, null);
+
+        parser.report_info("******************* NIVO C**********************", null);
+        parser.report_info("Broj definicija unutrasnjih klasa " + ParserCnt.classCnt, null);
+        parser.report_info("Broj definicija metoda unutrasnjih klasa " + ParserCnt.methodCnt, null);
+        parser.report_info("Broj deklaracije polja unutrasnjih klasa " + ParserCnt.fieldCnt, null);
+
         parser.report_info("USPESNO PREPOZNAVANJE", null);
         Tab.dump(TabExt.symbolTableVisitor);
 
@@ -2389,6 +2402,7 @@ class CUP$MJParser$actions {
             }
             else if (formVar)
             {
+                ParserCnt.formArgFunCnt++;
                 message = "Definicija formalnog parametra";
                 if (!curFormType.isSemanticError())
                 {
@@ -2397,6 +2411,7 @@ class CUP$MJParser$actions {
             }
             else if (fieldVar)
             {
+                ParserCnt.fieldCnt++;
                 message = "Definicija polja klase";
                 if (!curFieldType.isSemanticError())
                 {
@@ -2467,6 +2482,7 @@ class CUP$MJParser$actions {
 		int nameOfClassright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String nameOfClass = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
+        ParserCnt.classCnt++;
         isInClass = true;
         if (find_double_and_report_search(nameOfClass, nameOfClassleft, "Ime je vec deklarisano u okruzujucem opsegu"))
         {
@@ -2889,9 +2905,11 @@ class CUP$MJParser$actions {
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.peek()).value;
 
+
             String message = "Metoda";
             if (isInClass)
             {
+                ParserCnt.methodCnt++;
                 ObjResultWrapper objWrapper = find_virtual_method(curObjWrapperClass.getObj().getType(), nameOfMethod, isStatic, nameOfMethodleft);
                 if (objWrapper == null)
                 {
@@ -2899,6 +2917,7 @@ class CUP$MJParser$actions {
                     curObjWrapperMethod = new ObjResultWrapper(curMethod);
                     if (isStatic)
                     {
+                        ParserCnt.globalAndStaticMethodCnt++;
                         setMethodStatic(curObjWrapperMethod.getObj());
                     }
                     else
@@ -2920,6 +2939,7 @@ class CUP$MJParser$actions {
             {
                 if (!find_double_and_report_search(nameOfMethod, nameOfMethodleft, message))
                 {
+                    ParserCnt.globalAndStaticMethodCnt++;
                     if (isStatic)
                     {
                         semantic_error("STATIC ne moze da se koristi kod globalnih funkcija", isStaticleft);
@@ -3053,6 +3073,7 @@ class CUP$MJParser$actions {
 		int nameOfMethodright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)).right;
 		String nameOfMethod = (String)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-9)).value;
 		
+            ParserCnt.blockCnt++;
             if (!retType.isError())
             {
                 if (typesEqual(retType.getObj().getType(),Tab.noType))
@@ -3932,6 +3953,7 @@ class CUP$MJParser$actions {
             {
               Object RESULT =null;
 		
+        ParserCnt.blockCnt++;
         parser.log.debug("Prepoznat BLOK", null);
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Statement",46, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
@@ -4263,6 +4285,10 @@ class CUP$MJParser$actions {
             }
         }
         listCurObjWrapperFuncCall.addLast(func);
+        if (!curObjWrapperMethod.isError() && METHOD_ENTRY_NAME.equals(curObjWrapperMethod.getObj().getName())) {
+            ParserCnt.funcCallInMainCnt++;
+        }
+
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$28",118, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }

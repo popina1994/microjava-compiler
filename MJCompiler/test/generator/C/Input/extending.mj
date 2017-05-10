@@ -32,10 +32,14 @@ class B extends A
 class C extends B
 {
 	{
-	void m()
-	{
-		print('c');
-	}
+		void m()
+		{
+			print('c');
+		}
+		void z(int i, char c, bool b)
+		int t;
+		{
+		}
 	}
 }
 
@@ -61,6 +65,8 @@ class C extends B
 		a.t();
 		b.t();
 		c.t();
+		{
+		}
 		
 		
 	}

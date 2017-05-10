@@ -1020,7 +1020,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
         boolean syntaxError = false;
         int relOp;
         boolean isVirtual = false;
-        boolean doesOverride = false;
 
         public ObjResultWrapper() {}
 
@@ -1036,7 +1035,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
             objWrapper.setSyntaxError(syntaxError);
             objWrapper.setRelOp(relOp);
             objWrapper.setVirtual(isVirtual);
-            objWrapper.setDoesOverride(doesOverride);
             return objWrapper;
         }
 
@@ -1046,7 +1044,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
             setSyntaxError(copyFrom.syntaxError);
             setRelOp(copyFrom.relOp);
             setVirtual(copyFrom.isVirtual);
-            setDoesOverride(copyFrom.doesOverride);
             obj = copyFrom.obj;
         }
 
@@ -1191,16 +1188,6 @@ public class MJParser extends java_cup.runtime.lr_parser {
         public int getRelOp()
         {
             return relOp;
-        }
-
-        public boolean doesOverride()
-        {
-            return doesOverride;
-        }
-
-        public void setDoesOverride(boolean doesOverride)
-        {
-            this.doesOverride = doesOverride;
         }
 
         ObjResultWrapper propagateError(ObjResultWrapper obj)
@@ -2922,7 +2909,6 @@ class CUP$MJParser$actions {
                 {
                     curObjWrapperMethod = objWrapper;
                     setMethodOverride(curObjWrapperMethod.getObj());
-                    curObjWrapperMethod.setDoesOverride(true);
                 }
                 else
                 {
@@ -5515,28 +5501,42 @@ class CUP$MJParser$actions {
             if (curObjWrappFieldOrElem.isClassType())
             {
                 Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
-                if ( (obj == null) || ((obj.getKind() != Obj.Meth) || (!isMethodStatic(obj))) )
+                if (obj == null)
                 {
-                    // TODO ispisi
+                    semantic_error("Ne postoji clan sa datim imenom", memberNameleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else if (obj.getKind() != Obj.Meth)
+                {
+                    semantic_error("Ne postoji metoda unutar date klase sa datim imenom", memberNameleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else if (!(isMethodStatic(obj)))
+                {
+                    semantic_error("Metoda sa datim imenom nije staticka", memberNameleft);
                     RESULT = curObjWrappFieldOrElem.setSemanticError(true);
                 }
                 else
                 {
                     curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
-
                     RESULT = curObjWrappFieldOrElem;
                 }
             }
             else if (curObjWrappFieldOrElem.isClass())
             {
                 Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
-                if ( (obj == null) || ((obj.getKind() != Obj.Fld) && (obj.getKind() != Obj.Meth) ) )
+                if (obj == null)
                 {
+                    semantic_error("Ne postoji clan sa datim imenom", memberNameleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else if ( (obj.getKind() != Obj.Meth) && (obj.getKind() != Obj.Fld))
+                {
+                    semantic_error("Ne postoji clan unutar date klase sa datim imenom", memberNameleft);
                     RESULT = curObjWrappFieldOrElem.setSemanticError(true);
                 }
                 else
                 {
-
                     curObjWrappFieldOrElem.generateRightValue();
                     if ( (obj.getKind() == Obj.Meth) && (isMethodStatic(obj)) )
                     {
@@ -5569,6 +5569,7 @@ class CUP$MJParser$actions {
             }
             else
             {
+                semantic_error("Sa desne strane . mora da bude tipa unutrasnje klase", memberNameleft);
                 RESULT = curObjWrappFieldOrElem.setSemanticError(true);
             }
         }
@@ -5586,7 +5587,7 @@ class CUP$MJParser$actions {
             {
               ObjResultWrapper RESULT =null;
 
-        curObjWrappFieldOrElem.generateRightValue(false);
+        curObjWrappFieldOrElem.generateRightValue(false/*promoteToConst*/);
     
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("NT$33",129, ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -5602,13 +5603,10 @@ class CUP$MJParser$actions {
 		int exprright = ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).right;
 		ObjResultWrapper expr = (ObjResultWrapper)((java_cup.runtime.Symbol) CUP$MJParser$stack.elementAt(CUP$MJParser$top-1)).value;
 		
-        if (!curObjWrappFieldOrElem.isError()
-        && !expr.isError())
+        if (!curObjWrappFieldOrElem.isError() && !expr.isError())
         {
-            if (check_type_and_report(expr.getObj(), Tab.intType,
-            exprleft, " indeks niza mora bude tipa int"))
+            if (check_type_and_report(expr.getObj(), Tab.intType, exprleft, " indeks niza mora bude tipa int"))
             {
-
                 if (curObjWrappFieldOrElem.isArray())
                 {
                     Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();

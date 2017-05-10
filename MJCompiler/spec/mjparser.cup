@@ -212,7 +212,6 @@ parser code {:
         boolean syntaxError = false;
         int relOp;
         boolean isVirtual = false;
-        boolean doesOverride = false;
 
         public ObjResultWrapper() {}
 
@@ -228,7 +227,6 @@ parser code {:
             objWrapper.setSyntaxError(syntaxError);
             objWrapper.setRelOp(relOp);
             objWrapper.setVirtual(isVirtual);
-            objWrapper.setDoesOverride(doesOverride);
             return objWrapper;
         }
 
@@ -238,7 +236,6 @@ parser code {:
             setSyntaxError(copyFrom.syntaxError);
             setRelOp(copyFrom.relOp);
             setVirtual(copyFrom.isVirtual);
-            setDoesOverride(copyFrom.doesOverride);
             obj = copyFrom.obj;
         }
 
@@ -383,16 +380,6 @@ parser code {:
         public int getRelOp()
         {
             return relOp;
-        }
-
-        public boolean doesOverride()
-        {
-            return doesOverride;
-        }
-
-        public void setDoesOverride(boolean doesOverride)
-        {
-            this.doesOverride = doesOverride;
         }
 
         ObjResultWrapper propagateError(ObjResultWrapper obj)
@@ -1637,7 +1624,6 @@ MethodDecl ::=
                 {
                     curObjWrapperMethod = objWrapper;
                     setMethodOverride(curObjWrapperMethod.getObj());
-                    curObjWrapperMethod.setDoesOverride(true);
                 }
                 else
                 {
@@ -3151,28 +3137,42 @@ DotIdentOrBracketExpr ::=
             if (curObjWrappFieldOrElem.isClassType())
             {
                 Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
-                if ( (obj == null) || ((obj.getKind() != Obj.Meth) || (!isMethodStatic(obj))) )
+                if (obj == null)
                 {
-                    // TODO ispisi
+                    semantic_error("Ne postoji clan sa datim imenom", memberNameleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else if (obj.getKind() != Obj.Meth)
+                {
+                    semantic_error("Ne postoji metoda unutar date klase sa datim imenom", memberNameleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else if (!(isMethodStatic(obj)))
+                {
+                    semantic_error("Metoda sa datim imenom nije staticka", memberNameleft);
                     RESULT = curObjWrappFieldOrElem.setSemanticError(true);
                 }
                 else
                 {
                     curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
-
                     RESULT = curObjWrappFieldOrElem;
                 }
             }
             else if (curObjWrappFieldOrElem.isClass())
             {
                 Obj obj = curObjWrappFieldOrElem.getObj().getType().getMembersTable().searchKey(memberName);
-                if ( (obj == null) || ((obj.getKind() != Obj.Fld) && (obj.getKind() != Obj.Meth) ) )
+                if (obj == null)
                 {
+                    semantic_error("Ne postoji clan sa datim imenom", memberNameleft);
+                    RESULT = curObjWrappFieldOrElem.setSemanticError(true);
+                }
+                else if ( (obj.getKind() != Obj.Meth) && (obj.getKind() != Obj.Fld))
+                {
+                    semantic_error("Ne postoji clan unutar date klase sa datim imenom", memberNameleft);
                     RESULT = curObjWrappFieldOrElem.setSemanticError(true);
                 }
                 else
                 {
-
                     curObjWrappFieldOrElem.generateRightValue();
                     if ( (obj.getKind() == Obj.Meth) && (isMethodStatic(obj)) )
                     {
@@ -3205,6 +3205,7 @@ DotIdentOrBracketExpr ::=
             }
             else
             {
+                semantic_error("Sa desne strane . mora da bude tipa unutrasnje klase", memberNameleft);
                 RESULT = curObjWrappFieldOrElem.setSemanticError(true);
             }
         }
@@ -3216,17 +3217,14 @@ DotIdentOrBracketExpr ::=
     |
     BRACKET_LEFT
     {:
-        curObjWrappFieldOrElem.generateRightValue(false);
+        curObjWrappFieldOrElem.generateRightValue(false/*promoteToConst*/);
     :}
     Expr:expr BRACKET_RIGHT
     {:
-        if (!curObjWrappFieldOrElem.isError()
-        && !expr.isError())
+        if (!curObjWrappFieldOrElem.isError() && !expr.isError())
         {
-            if (check_type_and_report(expr.getObj(), Tab.intType,
-            exprleft, " indeks niza mora bude tipa int"))
+            if (check_type_and_report(expr.getObj(), Tab.intType, exprleft, " indeks niza mora bude tipa int"))
             {
-
                 if (curObjWrappFieldOrElem.isArray())
                 {
                     Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();

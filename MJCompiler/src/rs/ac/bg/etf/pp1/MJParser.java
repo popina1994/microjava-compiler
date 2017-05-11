@@ -3089,7 +3089,8 @@ class CUP$MJParser$actions {
                     Tab.chainLocalSymbols(curObjWrapperMethod.getObj());
                 }
                 curObjWrapperMethod.getObj().setAdr(Code.pc);
-                if (nameOfMethod.equals(METHOD_ENTRY_NAME) && !isInClass)
+                if (nameOfMethod.equals(METHOD_ENTRY_NAME)
+                    && !isInClass && (curObjWrapperMethod.getObj().getLevel() == 0))
                 {
                     TabExt.doesMainExist = true;
                     if (listVFTAdresses.size() == 0)

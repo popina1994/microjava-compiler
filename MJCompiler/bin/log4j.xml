@@ -19,7 +19,7 @@
 	
 	<root>
 		<!-- Kaze koji je nivo vidljivosti, info gasi debug ispise -->
-		<priority value="debug" />
+		<priority value="info" />
 		<appender-ref ref="file" />
 		<appender-ref ref="console" />
 	</root>

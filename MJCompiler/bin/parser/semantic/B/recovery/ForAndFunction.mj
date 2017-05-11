@@ -1,0 +1,29 @@
+program test
+{
+
+	void main()
+	int c;
+	{
+		for (;c;)
+		{
+		}
+		break;
+		continue;
+	}
+	
+	void test()
+	{
+		return 1;
+	}
+	
+	int test1()
+	{
+		return 'a';
+	}
+	
+	static int test2()
+	{
+		return 1;
+	}
+	
+}

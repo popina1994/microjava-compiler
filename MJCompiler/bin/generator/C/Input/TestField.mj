@@ -1,0 +1,172 @@
+program Test
+
+int t;
+
+class K1
+{
+	int i, tNiz[];
+	char c, cNiz[];
+	bool b, bNiz[];
+	{
+	
+				void m() {
+			print('m');
+		}
+		
+		void testP()
+		{
+			m();
+		}
+		
+			void t() { 
+			print('t');
+			print('u');
+		print(i);
+		print('k');
+		print(eol); }
+		
+		static int rek(int n)
+		int z;
+		{
+			
+			if (n == 0)
+			{				
+				return 1;
+			}
+			else 
+			{
+				print(n, 2);
+				return n * rek(n-1);
+			} 
+		}
+		
+		int rek2(int n)
+		int z;
+		{
+			
+			if (n == 0)
+			{				
+				return 1;
+			}
+			else 
+			{
+				print(n, 2);
+				return n * rek2(n-1);
+			} 
+		}
+		
+		void izr(int n)
+		{
+			print('r');
+			print(rek(n));
+			print(eol);
+		}
+		
+		void dva(int a, int b)
+		{
+			print(a);
+			print(b);
+		}
+		
+
+		
+
+		void n(int z)  { print(z); } 
+
+		K1 R() {}
+		K1 Z1(K1 k, int t, int r) {}
+		static void test() 
+		{ 
+			print('t');
+		}
+		static void Z2(K1 k, K1 k1, K1 k2, int r) {}
+		static int Z3(K1 k) {}
+		
+		static int R1(int t) { return t + 1;}
+	}
+}
+
+class K2 extends K1
+{
+	{
+	void m()
+	{
+		print('i');
+	}
+	}
+}
+
+{
+	void main()
+		K1 k1, kArr[];
+		int i; 
+		K2 k2;
+	{
+		
+		k1 = new K2;
+		k1.dva(1, 2);
+		k2 = new K2;
+		k2.testP();
+		k1 = k2;
+		k1.testP();
+		
+	
+		k1 = new K1;
+		k1.testP();
+		print('i');
+		k1.izr(5);
+		print('r');
+		k1.rek(5);
+		print('r');
+		K1.rek(5);
+		
+		k1.i = 4;
+		k1.c = 'a';
+		k1.b = true;
+		
+		kArr = new K1[3];
+		kArr[0] = new K1;
+		kArr[1] = new K1;
+		kArr[2] = new K1;
+		
+		for (i = 0; i < 3; i ++)
+			kArr[i].i = i;
+			
+		for (i = 0; i < 3; i ++)
+		{
+			print('a');
+			print(kArr[i].i);
+			print(eol);
+		}
+		print(k1.i);
+		print(k1.c);
+		print(k1.b);
+		print('s');print('t');
+		K1.test();
+		print(eol);
+		
+		print('r');
+		print('v');
+		print('a');
+		print('l');
+		print(K1.R1(3));
+		print(eol);
+		
+		print('a');
+		print('v');
+		print('f');
+		print('t');
+		print(eol);
+		
+		k1.m();
+		print(eol);
+		
+		print('p');
+		print('a');
+		print('s');
+		print('s');
+		k1.n(5);
+		k1.t();
+		k1.rek2(5);
+	}
+}

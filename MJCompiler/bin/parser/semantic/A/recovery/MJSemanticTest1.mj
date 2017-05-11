@@ -1,0 +1,80 @@
+// Testira osnovne deklaracije i neslaganje tipova kod deklaracija...
+// Neslaganje tipova kod dodele nizova
+//
+program Test
+const int constInt1 = 'a', constInt2 = true;
+int promInt1, nizInt1[], promInt2, nizInt2[];
+
+const bool constBool1 = 'a', constBool2 = 1;
+bool promBool1, nizBool1[], promBool2, nizBool2[];
+
+const char constChar1 = 1, constChar2 = true;
+char promChar1, nizChar1[], promChar2, nizChar2[];
+
+z m, t, l, u;
+int a, a;
+void r;
+int v;
+
+{
+	void t(){
+		nesto['i'] = 1; 
+		promInt1['a'] = 1;
+		promInt1[1] = 1;
+		print('i', 2);
+		promInt1 = constInt1;
+		print(promInt1, 2);
+
+		promInt2 = 3;
+		print(promInt2, 2);
+
+		nizInt2 = new int['a'];
+		nizInt2[2] = constInt2;
+		print(nizInt2[2], 2);
+		print(nizInt2[1], 2);
+
+		promInt1 = constInt1;
+		print(promInt1, 2);
+
+		promInt2 = 3;
+		print(promInt2, 2);
+
+		nizInt2 = new int[promInt2];
+		nizInt2[2] = constInt2;
+		print(nizInt2[2], 2);
+		//print(nizInt2[1], 2);
+
+		print('c', 2);
+
+		promChar1 = constChar1;
+		print(promChar1, 2);
+
+		promChar2 = 'c';
+		print(promChar2, 2);
+
+		nizChar2 = new char[promInt2];
+		nizChar2[2] = constChar1;
+		nizChar2[1] = constChar2;
+		print(nizChar2[2], 2);
+		print(nizChar2[1], 2);
+
+		print('b', 2);
+
+		promBool1 = constBool1;
+		print(promBool1, 2);
+
+		promBool2 = false;
+		print(promBool2, 2);
+
+		nizBool2 = new bool[promInt2];
+		nizBool2[2] = constBool1;
+		print(nizBool2[2], 2);
+		print(nizBool2[1], 2);
+		promChar1[1] = 1;
+		nizChar1['a'] = 1;
+	}
+	
+	int m(int m, int m)
+	{
+	}
+}

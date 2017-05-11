@@ -1,0 +1,62 @@
+// Testira osnovne deklaracije i definicije i njihove upotrebe
+//
+program Test
+const int constInt1 = 1, constInt2 = 2;
+int promInt1, nizInt1[], promInt2, nizInt2[];
+
+const bool constBool1 = true, constBool2 = false;
+bool promBool1, nizBool1[], promBool2, nizBool2[];
+
+const char constChar1 = 'a', constChar2 = 'b';
+char promChar1, nizChar1[], promChar2, nizChar2[];
+
+{
+	void main(){
+	
+		nizInt2 = new int[3];
+		nizInt2[2] = constInt2;
+		nizInt2[1] = constInt1;
+		print(nizInt2[2], 2);
+		print(nizInt2[1], 2);
+		
+		nizInt2[nizInt2[2]] = 3; 
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] += 1;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] -= 1;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] *= 2;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] /= 2;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] += nizInt2[2];
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] -= nizInt2[2];
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] ++;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] --;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] = nizInt2[2] + 1;
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] = 1 + nizInt2[2];
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] = nizInt2[2] + nizInt2[2];
+		print(nizInt2[2], 2);
+		
+		nizInt2[2] = (nizInt2[2] + nizInt2[2] + 1) * nizInt2[2];
+		print(nizInt2[2], 3 );
+		
+	}
+}

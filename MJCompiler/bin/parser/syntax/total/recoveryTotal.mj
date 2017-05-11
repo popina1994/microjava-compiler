@@ -1,0 +1,111 @@
+// Globalne definicije , i ; oporavak.
+//
+program Test
+int nesto,,sdfdsf;
+int nesto3 nesto4;
+bool nesto5[, nesto6;
+int nestoReg;
+
+class K1 extends +
+{
+		int nesto,	;
+	T +;
+	T+;
+	T+
+	{
+		void m(int t, int a, int b)
+		{
+		}
+		int r(int t, int a, int b)
+		{
+		}
+	}
+}
+
+class K2 extends + sfds d+	
+{
+	T+
+	T+
+	{
+	}
+}
+
+{
+
+
+		void test1(int t,)
+	{}
+	void test2(int , z t t)
+	{
+	}
+	void test3(test int t, int)
+	{
+	} 
+	void main()
+	int t;
+	bool a;
+	int niz[];
+		K1 k1;
+	int z;
+	int i;
+	int nesto7,;
+	int nesto11[;
+	int nesto8,
+	int nesto9{
+		nestoReg = nestoReg +;
+		nestoReg = 1;	
+		nestoReg = nestoReg  * ;
+				for (;)
+		{
+		}
+		for (t=;;)
+		{
+		}
+		for (;t=;)
+		{
+		}
+		for (;;t=)
+		{
+		}
+		for (t=;t=;)
+		{
+		}
+		for (;t=;t=)
+		{
+		}
+		for (t=;;t=)
+		{
+		}
+		for (t=;t=;t=)
+		{
+		}
+		for (t=;)
+		{
+		}
+		
+		for (t=)
+		{
+		}
+		
+		if (a &&)
+		{
+		}
+		if (a ||)
+		{
+		}
+		if (a && a ||)
+		{
+		}
+		if(+)
+		{
+		}
+		niz[a +] = 1;
+		niz[] = 1;
+		
+				k1 = new K1;
+		K1.m(1, 2, 3);
+		k1.r(1, 2, 3);
+		k1.m(fds asdf fds);
+		z = 1 + k1.m(fsd sdffd dsdf));
+	}
+}

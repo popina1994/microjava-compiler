@@ -1,0 +1,73 @@
+program test
+
+class A
+{
+	int v;
+	{
+		void m()
+		{
+			print('a');
+		}
+		static void t()
+		{
+			print('s');
+		}
+	}
+}
+int t;
+class B extends A
+{
+	{
+		void m()
+		{
+			print('b');
+		}
+	
+	void r()
+		{
+		}
+	}
+}
+
+class C extends B
+{
+	{
+		void m()
+		{
+			print('c');
+		}
+		void z(int i, char c, bool b)
+		int t;
+		{
+		}
+	}
+}
+
+
+{
+	void main()
+	A a;
+	B b;
+	C c;
+	{
+		a = new A;
+		b = new B;
+		c = new C;
+		a.m();
+		b.m();
+		c.m();
+		a = b;
+		b = c;
+		a.m();
+		b.m();
+		a = b;
+		a.m();
+		a.t();
+		b.t();
+		c.t();
+		{
+		}
+		
+		
+	}
+}

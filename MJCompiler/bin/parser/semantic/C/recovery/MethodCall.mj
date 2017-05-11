@@ -1,0 +1,29 @@
+program Test
+
+class K1
+{
+	int t;
+	{
+		void f()
+		{
+		}
+		static void s(){
+			f();
+			t = 1;	
+		}
+		
+		
+	}
+}
+
+int t;
+
+{
+	void main()
+	{
+		t(1, t(1));
+		s(1);
+			
+		
+	}
+}

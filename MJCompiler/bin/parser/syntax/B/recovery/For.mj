@@ -1,0 +1,41 @@
+program test
+
+{
+	void main()
+	int t;
+	{
+		for (;)
+		{
+		}
+		for (t=;;)
+		{
+		}
+		for (;t=;)
+		{
+		}
+		for (;;t=)
+		{
+		}
+		for (t=;t=;)
+		{
+		}
+		for (;t=;t=)
+		{
+		}
+		for (t=;;t=)
+		{
+		}
+		for (t=;t=;t=)
+		{
+		}
+		for (t=;)
+		{
+		}
+		
+		for (t=)
+		{
+		}
+		
+		
+	}
+}

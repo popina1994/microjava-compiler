@@ -1,0 +1,20 @@
+program test	
+
+{
+	void main()
+	bool a;
+	{
+		if (a &&)
+		{
+		}
+		if (a ||)
+		{
+		}
+		if (a && a ||)
+		{
+		}
+		if(+)
+		{
+		}
+	}
+}

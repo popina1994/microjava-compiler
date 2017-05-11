@@ -14,7 +14,7 @@ class A
 		}
 	}
 }
-
+int t;
 class B extends A
 {
 	{

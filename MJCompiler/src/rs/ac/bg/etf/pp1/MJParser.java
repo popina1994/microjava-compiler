@@ -1285,6 +1285,11 @@ public class MJParser extends java_cup.runtime.lr_parser {
         log.info(msg.toString());
     }
 
+    public void report_info(String message)
+    {
+        report_info(message, null);
+    }
+
     public boolean typesEqual(Struct type1, Struct type2)
     {
         // This is the same as check with name, because all types are on first level.
@@ -1476,6 +1481,57 @@ public class MJParser extends java_cup.runtime.lr_parser {
         return true;
     }
 
+    public void detectSymbolInfo(Obj obj, int line)
+    {
+        TabExt.symbolTableVisitor.visitObjNode(obj);
+        report_info("Detektovano koriscenje simbola:" + TabExt.symbolTableVisitor.getOutput());
+        report_info("Linija:" + line);
+        switch (obj.getKind())
+        {
+            case Obj.Con:
+                report_info("Simbol je konstanta");
+                break;
+            case Obj.Var:
+                if (obj.getLevel() == 0)
+                {
+                    report_info("Simbol je globalna promenljiva");
+                }
+                else
+                {
+                    if (obj.getFpPos() != 0)
+                    {
+                        report_info("Simbol je formalni parametar funkcije");
+                    }
+                    else
+                    {
+                        report_info("Simbol je lokalna promenljiva funkcije");
+                    }
+                }
+                break;
+            case Obj.Meth:
+                if (isMethodGlobal(obj))
+                {
+                    report_info("Simbol je globalna funkcija");
+                }
+                else
+                if (isMethodStatic(obj) || isMethodVirtual(obj))
+                {
+                    report_info("Simbol je metoda unutrasnje klase");
+                }
+                break;
+            case Obj.Fld:
+                report_info("Simbol je polje klase");
+                break;
+            case Obj.Type:
+                report_info("Simbol je klasa");
+                break;
+            case Obj.Elem:
+                report_info("Simbol je element niza");
+                break;
+
+        }
+    }
+
     ObjResultWrapper find_for_use_and_report(String name, int line, String additionalMessage)
     {
         ObjResultWrapper result = null;
@@ -1488,7 +1544,7 @@ public class MJParser extends java_cup.runtime.lr_parser {
         }
         else
         {
-            // TODO : info za koriscenje objekta
+            detectSymbolInfo(obj, line);
         }
 
         return result;
@@ -5353,6 +5409,7 @@ class CUP$MJParser$actions {
                                          exprWrapleft,
                                          "Tip izraza kod NEW operatora sa nizom mora da bude int"))
                 {
+                    detectSymbolInfo(type.getObj(), typeleft);
                     Code.put(Code.newarray);
                     if (typesEqual(type.getObj().getType(), Tab.charType))
                     {
@@ -5377,6 +5434,7 @@ class CUP$MJParser$actions {
                     // For sur is type if it's not a semantic error
                     if  (type.getObj().getType().getKind() == Struct.Class)
                     {
+                        detectSymbolInfo(type.getObj(), typeleft);
                         Code.put(Code.new_);
                         Code.put2(type.getObj().getType().getNumberOfFields() * INT_SIZE);
                         // adr
@@ -5401,8 +5459,6 @@ class CUP$MJParser$actions {
                 }
 
             }
-            // TO DO : Add check of errors.
-            //
         
               CUP$MJParser$result = parser.getSymbolFactory().newSymbol("Factor",78, ((java_cup.runtime.Symbol)CUP$MJParser$stack.elementAt(CUP$MJParser$top-2)), ((java_cup.runtime.Symbol)CUP$MJParser$stack.peek()), RESULT);
             }
@@ -5653,6 +5709,7 @@ class CUP$MJParser$actions {
                 }
                 else
                 {
+                    detectSymbolInfo(obj, memberNameleft);
                     curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
                     RESULT = curObjWrappFieldOrElem;
                 }
@@ -5672,6 +5729,7 @@ class CUP$MJParser$actions {
                 }
                 else
                 {
+                    detectSymbolInfo(obj, memberNameleft);
                     curObjWrappFieldOrElem.generateRightValue();
                     if ( (obj.getKind() == Obj.Meth) && (isMethodStatic(obj)) )
                     {
@@ -5744,8 +5802,10 @@ class CUP$MJParser$actions {
             {
                 if (curObjWrappFieldOrElem.isArray())
                 {
+
                     Struct curArrayDotType = curObjWrappFieldOrElem.getObj().getType().getElemType();
                     Obj obj = new Obj(Obj.Elem, "", curArrayDotType);
+                    detectSymbolInfo(obj, exprleft);
                     curObjWrappFieldOrElem.copyTo(new ObjResultWrapper(obj));
                     Code.put(Code.dup2);
                     Code.load(obj);

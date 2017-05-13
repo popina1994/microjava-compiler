@@ -2886,28 +2886,6 @@ RelOpExprOrEpsilon ::=
 /******************* Expr       *****************************/
 /************************************************************/
 Expr ::=
-    OP_SUB
-    AddopRightTerm:term
-    {:
-        if (!term.isError())
-        {
-            if (check_type_and_report(term.getObj(), Tab.intType, termleft, " Kad se - nalazi ispred nekog izraza, on mora biti int."))
-            {
-                term.generateRightValue();
-                Code.put(Code.neg);
-                RESULT = term;
-            }
-            else
-            {
-                RESULT = term.setSemanticError(true);
-            }
-        }
-        else
-        {
-            RESULT = term;
-        }
-    :}
-    |
     AddopRightTerm:term
     {:
         if (!term.isError())
@@ -2999,6 +2977,27 @@ AddopLeftTerm ::=
         else
         {
             RESULT = leftTerm.propagateError(rightTerm);
+        }
+    :}
+    |
+    OP_SUB Term:term
+    {:
+        if (!term.isError())
+        {
+            if (check_type_and_report(term.getObj(), Tab.intType, termleft, " Kad se - nalazi ispred nekog izraza, on mora biti int."))
+            {
+                term.generateRightValue();
+                Code.put(Code.neg);
+                RESULT = term;
+            }
+            else
+            {
+                RESULT = term.setSemanticError(true);
+            }
+        }
+        else
+        {
+            RESULT = term;
         }
     :}
     |

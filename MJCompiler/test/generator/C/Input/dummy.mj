@@ -1,9 +1,9 @@
-program
+program test
 int niz[];
 
 {
 	void main()
 	{
-		
+		print(-1 + 3);
 	}
 }
